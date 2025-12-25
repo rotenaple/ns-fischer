@@ -3,9 +3,9 @@
 ## Quick Start
 
 ```bash
-# 1. Copy and configure example files
-cp configs/major-hourly.json.example configs/major-hourly.json
-nano configs/major-hourly.json  # Edit with your settings
+# 1. Copy and configure
+cp config.json.example config.json
+nano config.json  # Edit with your settings
 
 # 2. Run with Docker Compose
 docker-compose up -d
@@ -36,16 +36,25 @@ docker-compose ps
 docker run --rm -v $(pwd)/configs:/app/configs -v $(pwd)/snapshot:/app/snapshot fischer-notifier:latest
 ```
 
-## Configuration Files (Required)
+## Configuration File (Required)
 
-All configuration is in JSON files in the `configs/` directory:
+All configuration is in a single `config.json` file with named sections:
 
 ```json
 {
-  "webhook_url": "https://discord.com/api/webhooks/YOUR_ID/YOUR_TOKEN",
-  "nations": ["Nation1", "Nation2"],
-  "user_agent": "YourMainNation",
-  "schedule": "*/15 * * * *"
+  "major": {
+    "webhook_url": "https://discord.com/api/webhooks/YOUR_ID/YOUR_TOKEN",
+    "nations": ["Nation1", "Nation2"],
+    "user_agent": "YourMainNation",
+    "schedule": "0 * * * *"
+  },
+  "minor": {
+    "webhook_url": "https://discord.com/api/webhooks/YOUR_ID/YOUR_TOKEN",
+    "nations": ["Nation1", "Nation2"],
+    "user_agent": "YourMainNation",
+    "schedule": "*/10 * * * *",
+    "no_ping": true
+  }
 }
 ```
 

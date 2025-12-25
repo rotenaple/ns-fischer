@@ -22,15 +22,14 @@ This guide explains how to run the Fischer auction notifier using Docker with ce
    cd fischer
    ```
 
-2. Create your configuration files:
+2. Create your configuration file:
    ```bash
-   cp configs/major-hourly.json.example configs/major-hourly.json
-   cp configs/minor-frequent.json.example configs/minor-frequent.json
+   cp config.json.example config.json
    ```
 
-3. Edit the config files with your settings:
+3. Edit config.json with your settings:
    ```bash
-   nano configs/major-hourly.json  # or use your preferred editor
+   nano config.json  # or use your preferred editor
    ```
 
 4. Run with Docker Compose:
@@ -46,25 +45,37 @@ This guide explains how to run the Fischer auction notifier using Docker with ce
 
 ## Configuration
 
-All configuration is done via JSON files in the `configs/` directory. Each config file can specify its own schedule, webhook, nations, and other settings.
+All configuration is done via a single `config.json` file with named sections. Each section can specify its own schedule, webhook, nations, and other settings.
 
 **No environment variables or `.env` file needed!**
 
 ### Configuration File Structure
 
-Create JSON files in the `configs/` directory:
+Create `config.json` with named configurations:
 
 ```json
 {
-  "webhook_url": "https://discord.com/api/webhooks/...",
-  "nations": ["Nation1", "Nation2"],
-  "user_agent": "YourMainNation",
-  "schedule": "0 * * * *",
-  "mention": "<@&ROLE_ID>",
-  "check_snapshot": true,
-  "snapshot_path": "./snapshot/hourly.json"
+  "major": {
+    "webhook_url": "https://discord.com/api/webhooks/...",
+    "nations": ["Nation1", "Nation2"],
+    "user_agent": "YourMainNation",
+    "schedule": "0 * * * *",
+    "mention": "<@&ROLE_ID>",
+    "check_snapshot": true,
+    "snapshot_path": "./snapshot/major.json"
+  },
+  "minor": {
+    "webhook_url": "https://discord.com/api/webhooks/...",
+    "nations": ["Nation1", "Nation2"],
+    "user_agent": "YourMainNation",
+    "schedule": "*/10 * * * *",
+    "no_ping": true,
+    "snapshot_path": "./snapshot/minor.json"
+  }
 }
 ```
+
+You can add as many named configurations as you want (major, minor, alerts, etc.).
 
 ### Required Fields
 
@@ -82,7 +93,7 @@ Create JSON files in the `configs/` directory:
 - **snapshot_path**: Path to snapshot file
 - **debug_mode**: Enable verbose logging
 
-See [configs/README.md](configs/README.md) for detailed documentation.
+See `config.json.example` for a complete example with comments.
 
 ## Running with Docker Compose
 

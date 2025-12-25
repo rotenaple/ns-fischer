@@ -2,6 +2,12 @@
 
 This script is based on [Kractero/auction-fisher](https://github.com/Kractero/auction-fisher) with additional features.
 
+## Platform-Specific Guides
+
+- **Unraid**: See [UNRAID.md](UNRAID.md) for detailed Unraid setup instructions
+- **Docker/Linux**: See [DOCKER.md](DOCKER.md) for general Docker deployment
+- **Quick Reference**: See [DOCKER-QUICKREF.md](DOCKER-QUICKREF.md) for common commands
+
 ## Quick Start
 
 ### Using Docker (Recommended)
@@ -20,6 +26,10 @@ This script is based on [Kractero/auction-fisher](https://github.com/Kractero/au
 **All configurations are in a single `config.json` file!** Each named configuration can have its own schedule.
 
 For detailed Docker instructions, see [DOCKER.md](DOCKER.md).
+
+### Using Unraid
+
+See the comprehensive [UNRAID.md](UNRAID.md) guide for step-by-step instructions on running this container on Unraid.
 
 ### Using Node.js Directly
 

@@ -18,8 +18,8 @@ COPY lib ./lib
 COPY entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 
-# Create directories for snapshot and configs
-RUN mkdir -p /app/snapshot /app/configs
+# Create directory for snapshots
+RUN mkdir -p /app/snapshot
 
 # Set environment variables with defaults
 ENV NODE_ENV=production

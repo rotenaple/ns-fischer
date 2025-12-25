@@ -7,18 +7,17 @@ This script is based on [Kractero/auction-fisher](https://github.com/Kractero/au
 ### Using Docker (Recommended)
 
 1. Clone the repository and navigate to the directory
-2. Create your configuration files in the `configs/` directory:
+2. Create your configuration file:
    ```bash
-   cp configs/major-hourly.json.example configs/major-hourly.json
-   cp configs/minor-frequent.json.example configs/minor-frequent.json
+   cp config.json.example config.json
    ```
-3. Edit the config files with your webhook URL, nations, and user_agent
+3. Edit config.json with your webhook URL, nations, and schedules
 4. Run with Docker Compose:
    ```bash
    docker-compose up -d
    ```
 
-**New**: All configuration is now centralized in the `configs/` directory. Each config file can specify its own schedule. No separate environment variables needed!
+**All configurations are in a single `config.json` file!** Each named configuration can have its own schedule.
 
 For detailed Docker instructions, see [DOCKER.md](DOCKER.md).
 
@@ -27,104 +26,66 @@ For detailed Docker instructions, see [DOCKER.md](DOCKER.md).
 1. Download the [Node.js](https://nodejs.org/en/download/current) matching your operating system.
 2. Enter the directory and run npm install.
 3. Create a webhook on a discord server.
-4. Create configuration files in the `configs/` directory or specify paths directly.
+4. Create a config.json file with your configurations.
 
-## Centralized Configuration
+## Single Configuration File
 
-All configuration files are now stored in the `configs/` directory. Each config file can include its own schedule, making it easy to manage multiple update frequencies from one place.
+All configurations are stored in a single `config.json` file with named sections. Each section can include its own schedule.
 
-See [configs/README.md](configs/README.md) for detailed configuration documentation.
+### Example config.json
 
-### Quick Example
-
-Create `configs/hourly.json`:
 ```json
 {
-  "webhook_url": "https://discord.com/api/webhooks/...",
-  "nations": ["Nation1", "Nation2"],
-  "user_agent": "YourMainNation",
-  "schedule": "0 * * * *",
-  "mention": "<@&ROLE_ID>",
-  "check_snapshot": true,
-  "snapshot_path": "./snapshot/hourly.json"
+  "major": {
+    "webhook_url": "https://discord.com/api/webhooks/...",
+    "nations": ["Nation1", "Nation2"],
+    "user_agent": "YourMainNation",
+    "schedule": "0 * * * *",
+    "mention": "<@&ROLE_ID>",
+    "check_snapshot": true,
+    "snapshot_path": "./snapshot/major.json"
+  },
+  "minor": {
+    "webhook_url": "https://discord.com/api/webhooks/...",
+    "nations": ["Nation1", "Nation2"],
+    "user_agent": "YourMainNation",
+    "schedule": "10,20,30,40,50 * * * *",
+    "no_ping": true,
+    "check_snapshot": false,
+    "snapshot_path": "./snapshot/minor.json"
+  }
 }
 ```
 
-Create `configs/frequent.json`:
-```json
-{
-  "webhook_url": "https://discord.com/api/webhooks/...",
-  "nations": ["Nation1", "Nation2"],
-  "user_agent": "YourMainNation",
-  "schedule": "*/10 * * * *",
-  "no_ping": true,
-  "check_snapshot": false,
-  "snapshot_path": "./snapshot/frequent.json"
-}
-```
-
-Run: `docker-compose up -d`
-
-The scheduler automatically runs each config on its own schedule.
+You can add as many named configurations as you want (major, minor, alerts, etc.).
 
 ## Configuration File Basics
 
-- Configuration files are in JSON format stored in the `configs/` directory
-- Each config can specify its own `schedule` field with a cron expression
+- Single `config.json` file contains all configurations
+- Each configuration has a name (key in the JSON object)
+- Each configuration can specify its own `schedule` field with a cron expression
 - If no schedule is specified, the config runs once on startup
-- You can also run configs manually: `node main.js configs/myconfig.json`
-     "mention": "<@&ROLE_ID>",
-     "no_ping": false
-   }
-   ```
-
-2. Create `config-minor.json` for frequent minor updates:
-   ```json
-   {
-     "webhook_url": "YOUR_WEBHOOK_URL",
-     "nations": ["Nation1", "Nation2"],
-     "user_agent": "YourMainNation",
-     "check_snapshot": false,
-     "snapshot_path": "./snapshot/minor.json",
-     "no_ping": true
-   }
-   ```
-
-3. Run both configs:
-   ```bash
-   node main.js config-major.json config-minor.json
-   ```
-
-4. Schedule with cron:
-   ```bash
-   # Major updates every hour
-   0 * * * * node /path/to/main.js /path/to/config-major.json
-   
-   # Minor updates every 10 minutes (except on the hour)
-   10,20,30,40,50 * * * * node /path/to/main.js /path/to/config-minor.json
-   ```
-
-## Use Cases for Multiple Configurations
-
-1. **Varied Message Frequencies**:
-
-   - Create one config with `check_snapshot: true` for notifications only on new activity.
-   - Create another config with `check_snapshot: false` for regular updates regardless of new bids.
-   - Both configs can use the same snapshot file to track what's been seen before.
-
-2. **Ping vs. No-Ping Updates**:
-
-   - Set up one config with `no_ping: false` for important updates that should notify users.
-   - Set up another with `no_ping: true` for regular updates without notifications.
-
-3. **Multiple Discord Servers**:
-   - Set up different configs to send auction information to various Discord servers or channels.
+- You can also run specific configs manually from the command line
 
 ## Configuration Options
 
-All configs are stored in JSON files in the `configs/` directory:
+Each named configuration in `config.json` supports these fields:
 
 ```json
+{
+  "configname": {
+    "webhook_url": "YOUR_DISCORD_WEBHOOK_URL",
+    "nations": ["NATION1", "NATION2", "NATION3"],
+    "user_agent": "YOUR_NATION_NAME",
+    "schedule": "*/15 * * * *",
+    "mention": "<@&ROLE_ID>",
+    "no_ping": false,
+    "snapshot_path": "./snapshot/auction_snapshot.json",
+    "check_snapshot": false,
+    "debug_mode": false
+  }
+}
+```
 {
   "webhook_url": "YOUR_DISCORD_WEBHOOK_URL",
   "nations": ["NATION1", "NATION2", "NATION3"],

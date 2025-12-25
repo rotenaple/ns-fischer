@@ -1,40 +1,46 @@
 #!/bin/sh
 # entrypoint.sh - Docker entrypoint script for Fischer notifier
-# Reads all config files from /app/configs directory
+# Reads config.json with multiple named configurations
 # Each config can specify its own schedule
 
 set -e
 
-# Create necessary directories
-mkdir -p /app/snapshot /app/configs
+# Create snapshot directory
+mkdir -p /app/snapshot
 
-# Check if configs directory has any JSON files
-if [ ! "$(ls -A /app/configs/*.json 2>/dev/null)" ]; then
-    echo "Error: No JSON configuration files found in /app/configs/"
+# Check if config.json exists
+if [ ! -f "/app/config.json" ]; then
+    echo "Error: /app/config.json not found!"
     echo ""
-    echo "Please mount a directory with config files to /app/configs"
-    echo "Example: -v ./configs:/app/configs"
+    echo "Please mount a config.json file to /app/config.json"
+    echo "Example: -v ./config.json:/app/config.json:ro"
     echo ""
-    echo "Each config file should be a JSON file with the following structure:"
+    echo "The file should contain named configurations:"
     echo '{'
-    echo '  "webhook_url": "https://discord.com/api/webhooks/...",  '
-    echo '  "nations": ["Nation1", "Nation2"],'
-    echo '  "user_agent": "YourNation",'
-    echo '  "schedule": "*/15 * * * *"  // Optional: cron expression'
+    echo '  "major": {'
+    echo '    "webhook_url": "https://discord.com/api/webhooks/...",  '
+    echo '    "nations": ["Nation1", "Nation2"],'
+    echo '    "user_agent": "YourNation",'
+    echo '    "schedule": "0 * * * *"'
+    echo '  },'
+    echo '  "minor": {'
+    echo '    "webhook_url": "https://discord.com/api/webhooks/...",  '
+    echo '    "nations": ["Nation1", "Nation2"],'
+    echo '    "user_agent": "YourNation",'
+    echo '    "schedule": "*/10 * * * *"'
+    echo '  }'
     echo '}'
     exit 1
 fi
 
-echo "Found configuration files in /app/configs:"
-ls -1 /app/configs/*.json
+echo "Loading configuration from /app/config.json"
 
-# Create scheduler script
+# Create scheduler script that reads the single config file
 cat > /app/scheduler.js << 'SCHEDULER_EOF'
 const { spawn } = require('child_process');
 const fs = require('fs');
-const path = require('path');
 
-// Parse cron expression to determine if current time matches
+// Parse cron expression
 function parseSchedule(cronExpr) {
   const parts = cronExpr.trim().split(/\s+/);
   if (parts.length !== 5) {
@@ -82,61 +88,91 @@ function matchesSchedule(cronParts, now) {
          (dayOfWeek === '*' || matches(dayOfWeek, currentWeekday, 6));
 }
 
-// Load all configs
-const configsDir = '/app/configs';
-const configFiles = fs.readdirSync(configsDir)
-  .filter(f => f.endsWith('.json'))
-  .map(f => path.join(configsDir, f));
+// Load config.json with all configurations
+const configPath = '/app/config.json';
+let allConfigs;
 
-console.log(`Loaded ${configFiles.length} configuration file(s)`);
+try {
+  const configFile = fs.readFileSync(configPath, 'utf8');
+  allConfigs = JSON.parse(configFile);
+  
+  if (typeof allConfigs !== 'object' || allConfigs === null || Array.isArray(allConfigs)) {
+    throw new Error('config.json must be an object with named configurations');
+  }
+} catch (error) {
+  console.error(`Error loading config.json: ${error.message}`);
+  process.exit(1);
+}
+
+const configNames = Object.keys(allConfigs);
+console.log(`Loaded ${configNames.length} configuration(s): ${configNames.join(', ')}`);
 
 // Parse configs and their schedules
 const scheduledConfigs = [];
 const onDemandConfigs = [];
 
-configFiles.forEach(configPath => {
-  try {
-    const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-    const configName = path.basename(configPath);
-    
-    if (config.schedule) {
-      const cronParts = parseSchedule(config.schedule);
-      if (cronParts) {
-        scheduledConfigs.push({
-          name: configName,
-          path: configPath,
-          schedule: config.schedule,
-          cronParts: cronParts,
-          lastRun: null
-        });
-        console.log(`  ${configName}: scheduled (${config.schedule})`);
-      } else {
-        console.error(`  ${configName}: invalid schedule, treating as on-demand`);
-        onDemandConfigs.push({ name: configName, path: configPath });
-      }
+Object.entries(allConfigs).forEach(([name, config]) => {
+  if (config.schedule) {
+    const cronParts = parseSchedule(config.schedule);
+    if (cronParts) {
+      scheduledConfigs.push({
+        name: name,
+        config: config,
+        schedule: config.schedule,
+        cronParts: cronParts,
+        lastRun: null
+      });
+      console.log(`  ${name}: scheduled (${config.schedule})`);
     } else {
-      onDemandConfigs.push({ name: configName, path: configPath });
-      console.log(`  ${configName}: on-demand (no schedule)`);
+      console.error(`  ${name}: invalid schedule, treating as on-demand`);
+      onDemandConfigs.push({ name: name, config: config });
     }
-  } catch (error) {
-    console.error(`Error loading ${configPath}: ${error.message}`);
+  } else {
+    onDemandConfigs.push({ name: name, config: config });
+    console.log(`  ${name}: on-demand (no schedule)`);
   }
 });
+
+// Function to run a specific config
+function runConfig(name, config) {
+  // Create a temporary config file for this specific config
+  const tempConfigPath = `/tmp/config-${name}.json`;
+  fs.writeFileSync(tempConfigPath, JSON.stringify(config, null, 2));
+  
+  const child = spawn('node', ['main.js', tempConfigPath], {
+    stdio: 'inherit',
+    cwd: '/app'
+  });
+  
+  return child;
+}
 
 // If no scheduled configs, run all on-demand configs once and exit
 if (scheduledConfigs.length === 0) {
   console.log('\nNo scheduled configs found. Running all configs once...');
   
-  const configPaths = configFiles.join(' ');
-  const child = spawn('node', ['main.js', ...configFiles], {
-    stdio: 'inherit',
-    cwd: '/app'
-  });
+  // Run all configs sequentially
+  let index = 0;
+  function runNext() {
+    if (index >= configNames.length) {
+      console.log('Completed running all configs');
+      process.exit(0);
+      return;
+    }
+    
+    const name = configNames[index];
+    const config = allConfigs[name];
+    console.log(`\nRunning ${name}...`);
+    
+    const child = runConfig(name, config);
+    child.on('exit', (code) => {
+      console.log(`${name} finished (exit code: ${code})`);
+      index++;
+      runNext();
+    });
+  }
   
-  child.on('exit', (code) => {
-    console.log(`Completed with exit code ${code}`);
-    process.exit(code);
-  });
+  runNext();
 } else {
   // Run scheduler
   console.log('\nStarting scheduler...');
@@ -146,29 +182,23 @@ if (scheduledConfigs.length === 0) {
   scheduledConfigs.forEach(cfg => {
     if (matchesSchedule(cfg.cronParts, now)) {
       console.log(`[${now.toISOString()}] Running ${cfg.name} (matches current time)`);
-      const child = spawn('node', ['main.js', cfg.path], {
-        stdio: 'inherit',
-        cwd: '/app'
-      });
-      cfg.lastRun = now.getMinutes();
+      runConfig(cfg.name, cfg.config);
+      cfg.lastRun = `${now.getHours()}:${now.getMinutes()}`;
     }
   });
   
   // Check every minute
   setInterval(() => {
     const now = new Date();
-    const currentMinute = now.getMinutes();
+    const currentTimeKey = `${now.getHours()}:${now.getMinutes()}`;
     
     scheduledConfigs.forEach(cfg => {
       // Only run once per minute
-      if (cfg.lastRun !== currentMinute && matchesSchedule(cfg.cronParts, now)) {
-        cfg.lastRun = currentMinute;
+      if (cfg.lastRun !== currentTimeKey && matchesSchedule(cfg.cronParts, now)) {
+        cfg.lastRun = currentTimeKey;
         console.log(`[${now.toISOString()}] Running ${cfg.name}`);
         
-        const child = spawn('node', ['main.js', cfg.path], {
-          stdio: 'inherit',
-          cwd: '/app'
-        });
+        const child = runConfig(cfg.name, cfg.config);
         
         child.on('exit', (code) => {
           console.log(`[${new Date().toISOString()}] ${cfg.name} finished (exit code: ${code})`);

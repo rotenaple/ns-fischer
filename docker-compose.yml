@@ -8,10 +8,8 @@ services:
     volumes:
       # Mount snapshot directory to persist auction snapshots
       - ./snapshot:/app/snapshot
-      # Mount config directory for JSON config files with schedules
-      - ./configs:/app/configs
+      # Mount config.json file
+      - ./config.json:/app/config.json:ro
     restart: unless-stopped
     environment:
       - NODE_ENV=production
-      # All configuration is now in JSON files under /app/configs
-      # No .env file required - pass environment variables here or via command line

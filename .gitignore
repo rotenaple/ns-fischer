@@ -1,8 +1,6 @@
 node_modules
 .DS_Store
-config/*
-configs/*.json
-!configs/*.example
+config.json
 snapshot/*
 .env
 *.log

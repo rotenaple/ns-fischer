@@ -2,11 +2,27 @@
 
 This script is based on [Kractero/auction-fisher](https://github.com/Kractero/auction-fisher) with additional features.
 
-## Setup
+## Quick Start
+
+### Using Docker (Recommended)
+
+1. Clone the repository and navigate to the directory
+2. Copy `.env.example` to `.env` and configure your settings
+3. Run with Docker Compose:
+   ```bash
+   docker-compose up -d
+   ```
+
+For detailed Docker instructions, see [DOCKER.md](DOCKER.md).
+
+### Using Node.js Directly
 
 1. Download the [Node.js](https://nodejs.org/en/download/current) matching your operating system.
-1. Enter the directory and run npm install.
-1. Create a webhook on a discord server.
+2. Enter the directory and run npm install.
+3. Create a webhook on a discord server.
+4. Create a configuration file (see below).
+
+## Setup
 
 ## Configuration File Basics
 
@@ -111,6 +127,45 @@ Note:
 - The first config will always send a message on each run, without pinging users.
 - The second config will only send a message (with pings) when new bids are detected.
 - Both configs use the same `snapshot_path` to ensure consistency in tracking new activity.
+
+## Docker Deployment
+
+For production deployments and easier configuration management, Docker is the recommended approach.
+
+### Docker Quick Start
+
+```bash
+# Copy the example environment file
+cp .env.example .env
+
+# Edit .env with your configuration
+nano .env
+
+# Start the container
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+```
+
+### Docker Environment Variables
+
+All configuration options are available as environment variables:
+
+- `WEBHOOK_URL` - Your Discord webhook URL (required)
+- `NATIONS` - Comma-separated list of nations (required)
+- `SCHEDULE` - Cron expression for scheduling (e.g., `*/15 * * * *`)
+- `MENTION` - Discord role or user to mention
+- `DEBUG_MODE` - Enable debug logging
+- `CHECK_SNAPSHOT` - Only notify on new auctions
+- And more...
+
+See [DOCKER.md](DOCKER.md) for comprehensive Docker documentation including:
+- Detailed configuration options
+- Scheduling examples
+- Multiple instance setups
+- Troubleshooting
+- Kubernetes deployment
 
 ## Running Multiple Configurations
 

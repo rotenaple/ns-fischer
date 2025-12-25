@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  fischer:
+    build: .
+    image: fischer-notifier:latest
+    container_name: fischer-notifier
+    env_file:
+      - .env
+    volumes:
+      # Mount snapshot directory to persist auction snapshots
+      - ./snapshot:/app/snapshot
+      # Mount config directory for JSON config files
+      - ./config:/app/config
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production

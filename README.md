@@ -28,10 +28,56 @@ For detailed Docker instructions, see [DOCKER.md](DOCKER.md).
 
 - Configuration files are in JSON format.
 - You can create multiple configuration files for different use cases.
-- When running the script, provide the path to your config file as a command-line argument:
+- **NEW**: You can now run multiple configurations at once by providing multiple config files:
+  ```bash
+  node main.js config1.json config2.json config3.json
   ```
-  node main.js /path/to/your/config.json
-  ```
+- Each configuration will be processed sequentially, allowing for different update frequencies.
+
+## Running Multiple Configurations
+
+The script now supports running multiple configurations in a single invocation. This is useful for setting up different update frequencies:
+
+**Example Use Case**: Major updates hourly + minor updates every 10 minutes
+
+1. Create `config-major.json` for hourly major updates:
+   ```json
+   {
+     "webhook_url": "YOUR_WEBHOOK_URL",
+     "nations": ["Nation1", "Nation2"],
+     "user_agent": "YourMainNation",
+     "check_snapshot": true,
+     "snapshot_path": "./snapshot/major.json",
+     "mention": "<@&ROLE_ID>",
+     "no_ping": false
+   }
+   ```
+
+2. Create `config-minor.json` for frequent minor updates:
+   ```json
+   {
+     "webhook_url": "YOUR_WEBHOOK_URL",
+     "nations": ["Nation1", "Nation2"],
+     "user_agent": "YourMainNation",
+     "check_snapshot": false,
+     "snapshot_path": "./snapshot/minor.json",
+     "no_ping": true
+   }
+   ```
+
+3. Run both configs:
+   ```bash
+   node main.js config-major.json config-minor.json
+   ```
+
+4. Schedule with cron:
+   ```bash
+   # Major updates every hour
+   0 * * * * node /path/to/main.js /path/to/config-major.json
+   
+   # Minor updates every 10 minutes (except on the hour)
+   10,20,30,40,50 * * * * node /path/to/main.js /path/to/config-minor.json
+   ```
 
 ## Use Cases for Multiple Configurations
 
@@ -55,13 +101,12 @@ For detailed Docker instructions, see [DOCKER.md](DOCKER.md).
 {
   "webhook_url": "YOUR_DISCORD_WEBHOOK_URL",
   "nations": ["NATION1", "NATION2", "NATION3"],
+  "user_agent": "YOUR_NATION_NAME",
   "debug_mode": false,
   "mention": "<@&ROLE_ID>",
   "no_ping": false,
-  "check_cte": true,
   "snapshot_path": "./snapshot/auction_snapshot.json",
-  "check_snapshot": false,
-  "user_agent": "YOUR_NATION_NAME"
+  "check_snapshot": false
 }
 ```
 
@@ -69,15 +114,16 @@ For detailed Docker instructions, see [DOCKER.md](DOCKER.md).
 
 | Option           | Required | Default                              | Description                                                                                                               |
 | ---------------- | -------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
-| `webhook_url`    | Yes      | -                                    | Your Discord webhook URL.                                                                                                 |
-| `nations`        | Yes      | -                                    | Array of nation names to monitor.                                                                                         |
+| `webhook_url`    | **Yes**  | -                                    | Your Discord webhook URL.                                                                                                 |
+| `nations`        | **Yes**  | -                                    | Array of nation names to monitor.                                                                                         |
+| `user_agent`     | **Yes**  | -                                    | **REQUIRED**: Your nation name for API requests. Required to comply with NationStates API rules.                          |
 | `debug_mode`     | No       | `false`                              | Enable additional logging.                                                                                                |
 | `mention`        | No       | -                                    | Discord role/user to mention. Use `<@&ROLE_ID>` or `<@USER_ID>`.                                                          |
 | `no_ping`        | No       | `false`                              | When `true`, sends messages without @user mentions.                                                                       |
-| `check_cte`      | No       | `true`                               | Check if nations have Ceased To Exist. Set to `false` to reduce API calls and increase speed.                             |
 | `snapshot_path`  | No       | `"./snapshot/auction_snapshot.json"` | Path for the auction snapshot file.                                                                                       |
 | `check_snapshot` | No       | `false`                              | When `true`, only sends messages if new bids are detected since the last run. When `false`, sends a message on every run. |
-| `user_agent`     | No       | -                                    | Your nation name for API requests. Defaults to the first nation in `nations` if not supplied.                             |
+
+**Note**: CTE (Ceased To Exist) checking is now automatic and uses a quota-free method via the [unsmurf currentNations.txt](https://raw.githubusercontent.com/ns-rot/unsmurf/refs/heads/main/public/static/currentNations.txt) file.
 
 ## Snapshot Functionality
 
@@ -101,10 +147,10 @@ For detailed Docker instructions, see [DOCKER.md](DOCKER.md).
 {
   "webhook_url": "https://discord.com/api/webhooks/123456789/abcde",
   "nations": ["Nation1", "Nation2", "Nation3"],
+  "user_agent": "YourMainNation",
   "no_ping": true,
   "check_snapshot": false,
-  "snapshot_path": "./shared_snapshot.json",
-  "check_cte": false
+  "snapshot_path": "./shared_snapshot.json"
 }
 ```
 
@@ -114,11 +160,11 @@ For detailed Docker instructions, see [DOCKER.md](DOCKER.md).
 {
   "webhook_url": "https://discord.com/api/webhooks/987654321/fghij",
   "nations": ["Nation1", "Nation2", "Nation3"],
+  "user_agent": "YourMainNation",
   "mention": "<@&123456789>",
   "no_ping": false,
   "check_snapshot": true,
-  "snapshot_path": "./shared_snapshot.json",
-  "check_cte": true
+  "snapshot_path": "./shared_snapshot.json"
 }
 ```
 
@@ -127,6 +173,7 @@ Note:
 - The first config will always send a message on each run, without pinging users.
 - The second config will only send a message (with pings) when new bids are detected.
 - Both configs use the same `snapshot_path` to ensure consistency in tracking new activity.
+- CTE checking is automatic and doesn't consume API quota.
 
 ## Docker Deployment
 

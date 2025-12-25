@@ -12,21 +12,21 @@ generate_config() {
 const config = {
   webhook_url: process.env.WEBHOOK_URL || '',
   nations: (process.env.NATIONS || '').split(',').map(n => n.trim()).filter(n => n),
+  user_agent: process.env.USER_AGENT || '',
   debug_mode: process.env.DEBUG_MODE === 'true',
   mention: process.env.MENTION || '',
   no_ping: process.env.NO_PING === 'true',
-  check_cte: process.env.CHECK_CTE !== 'false',
   snapshot_path: process.env.SNAPSHOT_PATH || './snapshot/auction_snapshot.json',
-  check_snapshot: process.env.CHECK_SNAPSHOT === 'true',
-  user_agent: process.env.USER_AGENT || ''
+  check_snapshot: process.env.CHECK_SNAPSHOT === 'true'
 };
 console.log(JSON.stringify(config, null, 2));
 " > /app/config/config.json
 }
 
 # Check if required environment variables are set
-if [ -z "$WEBHOOK_URL" ] || [ -z "$NATIONS" ]; then
-    echo "Error: WEBHOOK_URL and NATIONS environment variables are required!"
+if [ -z "$WEBHOOK_URL" ] || [ -z "$NATIONS" ] || [ -z "$USER_AGENT" ]; then
+    echo "Error: WEBHOOK_URL, NATIONS, and USER_AGENT environment variables are required!"
+    echo "USER_AGENT is required to comply with NationStates API rules."
     echo "Please set these variables in your .env file or docker-compose.yml"
     exit 1
 fi

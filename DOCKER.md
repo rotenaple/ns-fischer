@@ -1,6 +1,6 @@
 # Docker Deployment Guide for Fischer Auction Notifier
 
-This guide explains how to run the Fischer auction notifier using Docker, with configuration via environment variables.
+This guide explains how to run the Fischer auction notifier using Docker with centralized JSON configuration.
 
 ## Table of Contents
 
@@ -9,7 +9,6 @@ This guide explains how to run the Fischer auction notifier using Docker, with c
 - [Configuration](#configuration)
 - [Running with Docker Compose](#running-with-docker-compose)
 - [Running with Docker CLI](#running-with-docker-cli)
-- [Environment Variables](#environment-variables)
 - [Scheduling](#scheduling)
 - [Volumes and Persistence](#volumes-and-persistence)
 - [Troubleshooting](#troubleshooting)
@@ -23,14 +22,15 @@ This guide explains how to run the Fischer auction notifier using Docker, with c
    cd fischer
    ```
 
-2. Copy the example environment file:
+2. Create your configuration files:
    ```bash
-   cp .env.example .env
+   cp configs/major-hourly.json.example configs/major-hourly.json
+   cp configs/minor-frequent.json.example configs/minor-frequent.json
    ```
 
-3. Edit `.env` and set your configuration:
+3. Edit the config files with your settings:
    ```bash
-   nano .env  # or use your preferred editor
+   nano configs/major-hourly.json  # or use your preferred editor
    ```
 
 4. Run with Docker Compose:
@@ -46,16 +46,43 @@ This guide explains how to run the Fischer auction notifier using Docker, with c
 
 ## Configuration
 
-The application can be configured entirely through environment variables. Create a `.env` file in the project root with your settings.
+All configuration is done via JSON files in the `configs/` directory. Each config file can specify its own schedule, webhook, nations, and other settings.
 
-### Required Variables
+**No environment variables or `.env` file needed!**
 
-- `WEBHOOK_URL`: Your Discord webhook URL
-- `NATIONS`: Comma-separated list of nation names to monitor
+### Configuration File Structure
 
-### Optional Variables
+Create JSON files in the `configs/` directory:
 
-See [Environment Variables](#environment-variables) section below for all options.
+```json
+{
+  "webhook_url": "https://discord.com/api/webhooks/...",
+  "nations": ["Nation1", "Nation2"],
+  "user_agent": "YourMainNation",
+  "schedule": "0 * * * *",
+  "mention": "<@&ROLE_ID>",
+  "check_snapshot": true,
+  "snapshot_path": "./snapshot/hourly.json"
+}
+```
+
+### Required Fields
+
+- **webhook_url**: Your Discord webhook URL
+- **nations**: Array of nation names to monitor
+- **user_agent**: Your nation name (required for NationStates API compliance)
+
+### Optional Fields
+
+- **schedule**: Cron expression for when to run (e.g., `"0 * * * *"` for hourly)
+  - If omitted, the config runs once on container startup
+- **mention**: Discord role/user to mention
+- **no_ping**: Set to `true` to send messages without pinging
+- **check_snapshot**: Only send messages for new auctions
+- **snapshot_path**: Path to snapshot file
+- **debug_mode**: Enable verbose logging
+
+See [configs/README.md](configs/README.md) for detailed documentation.
 
 ## Running with Docker Compose
 
@@ -82,7 +109,7 @@ docker-compose up -d --build
 
 ### Custom docker-compose.yml
 
-You can customize the `docker-compose.yml` file to suit your needs:
+The default configuration mounts the `configs/` directory:
 
 ```yaml
 version: '3.8'
@@ -92,16 +119,12 @@ services:
     build: .
     image: fischer-notifier:latest
     container_name: fischer-notifier
-    env_file:
-      - .env
     volumes:
       - ./snapshot:/app/snapshot
-      - ./config:/app/config
+      - ./configs:/app/configs
     restart: unless-stopped
     environment:
       - NODE_ENV=production
-      # Override specific variables here if needed
-      - DEBUG_MODE=true
 ```
 
 ## Running with Docker CLI
@@ -114,96 +137,56 @@ You can also run the container using Docker commands directly:
 docker build -t fischer-notifier:latest .
 ```
 
+### Run with Config Directory
+
+```bash
+docker run -d \
+  --name fischer-notifier \
+  -v $(pwd)/snapshot:/app/snapshot \
+  -v $(pwd)/configs:/app/configs \
+  --restart unless-stopped \
+  fischer-notifier:latest
+```
+
 ### Run Once (No Scheduling)
+
+For configs without a `schedule` field, or to test:
 
 ```bash
 docker run --rm \
-  --env-file .env \
+  -v $(pwd)/configs:/app/configs \
   -v $(pwd)/snapshot:/app/snapshot \
   fischer-notifier:latest
 ```
 
-### Run with Scheduling
-
-```bash
-docker run -d \
-  --name fischer-notifier \
-  --env-file .env \
-  -v $(pwd)/snapshot:/app/snapshot \
-  -v $(pwd)/config:/app/config \
-  --restart unless-stopped \
-  fischer-notifier:latest
 ```
-
-### Run with Manual Environment Variables
-
-```bash
-docker run -d \
-  --name fischer-notifier \
-  -e WEBHOOK_URL="https://discord.com/api/webhooks/..." \
-  -e NATIONS="Nation1,Nation2,Nation3" \
-  -e SCHEDULE="*/15 * * * *" \
-  -v $(pwd)/snapshot:/app/snapshot \
-  --restart unless-stopped \
-  fischer-notifier:latest
-```
-
-## Environment Variables
-
-### Core Configuration
-
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `WEBHOOK_URL` | **Yes** | - | Discord webhook URL for notifications |
-| `NATIONS` | **Yes** | - | Comma-separated list of nations to monitor |
-| `USER_AGENT` | **Yes** | - | **REQUIRED**: Your nation name for API requests (NationStates API compliance) |
-
-### Notification Settings
-
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `MENTION` | No | - | Discord mention (e.g., `<@&ROLE_ID>` or `<@USER_ID>`) |
-| `NO_PING` | No | `false` | When `true`, sends messages without @mentions |
-| `DEBUG_MODE` | No | `false` | Enable additional logging |
-
-### Auction Monitoring
-
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `SNAPSHOT_PATH` | No | `./snapshot/auction_snapshot.json` | Path for auction snapshot file |
-| `CHECK_SNAPSHOT` | No | `false` | Only send messages for new auctions |
-
-**Note:** CTE (Ceased To Exist) checking is automatic and quota-free using the [unsmurf currentNations.txt](https://raw.githubusercontent.com/ns-rot/unsmurf/refs/heads/main/public/static/currentNations.txt) file.
-
-### Scheduling
-
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `SCHEDULE` | No | - | Cron expression for scheduled runs (e.g., `*/15 * * * *`) |
-
-**Note:** If `SCHEDULE` is not set, the container will run the notifier once and exit.
 
 ## Scheduling
 
-The application supports automatic scheduling using cron expressions.
+Scheduling is now done per-config within each JSON file. Each config can have its own schedule.
+
+### Adding a Schedule to a Config
+
+Simply add a `schedule` field with a cron expression:
+
+```json
+{
+  "webhook_url": "...",
+  "nations": ["Nation1"],
+  "user_agent": "YourNation",
+  "schedule": "0 * * * *"
+}
+```
 
 ### Common Cron Patterns
 
-```bash
-# Every 15 minutes
-SCHEDULE=*/15 * * * *
-
-# Every hour
-SCHEDULE=0 * * * *
-
-# Every 30 minutes
-SCHEDULE=*/30 * * * *
-
-# Every day at midnight UTC
-SCHEDULE=0 0 * * *
-
-# Every hour during business hours (9 AM - 5 PM UTC)
-SCHEDULE=0 9-17 * * *
+```
+*/15 * * * *  - Every 15 minutes
+0 * * * *     - Every hour (on the hour)
+*/30 * * * *  - Every 30 minutes
+0 0 * * *     - Every day at midnight UTC
+0 9-17 * * *  - Every hour from 9 AM to 5 PM UTC
+10,20,30,40,50 * * * * - Every 10 minutes except on the hour
 ```
 
 ### Cron Expression Format
@@ -265,28 +248,33 @@ docker logs -f fischer-notifier
 
 ### Common Issues
 
+### Common Issues
+
 #### Container Exits Immediately
 
-**Cause:** Missing required environment variables.
+**Cause:** No configuration files found in `/app/configs`.
 
-**Solution:** Ensure `WEBHOOK_URL` and `NATIONS` are set in your `.env` file.
+**Solution:** Ensure you've mounted the configs directory and it contains `.json` files:
+```bash
+docker run -v $(pwd)/configs:/app/configs ...
+```
 
 #### No Messages Sent
 
 **Causes:**
 1. No active auctions for monitored nations
-2. `CHECK_SNAPSHOT=true` and no new auctions since last run
+2. `check_snapshot: true` and no new auctions since last run
 
 **Solution:** 
 - Check logs for "No active auctions" message
-- Try setting `CHECK_SNAPSHOT=false` to see all auctions
+- Try setting `check_snapshot: false` in your config to see all auctions
 - Verify nations are spelled correctly
 
-#### Cron Not Running
+#### Invalid Schedule
 
-**Cause:** Invalid cron expression in `SCHEDULE` variable.
+**Cause:** Invalid cron expression in config's `schedule` field.
 
-**Solution:** Verify your cron expression using a cron validator.
+**Solution:** Verify your cron expression using a cron validator. The config will run once on startup if the schedule is invalid.
 
 #### Permission Errors with Volumes
 
@@ -295,25 +283,51 @@ docker logs -f fischer-notifier
 **Solution:**
 ```bash
 # Create directories with correct permissions
-mkdir -p snapshot config
-chmod 777 snapshot config
+mkdir -p snapshot configs
+chmod 755 snapshot configs
 ```
 
 ### Debug Mode
 
-Enable debug mode for verbose logging:
+Enable debug mode in your config file:
 
-```bash
-# In .env file
-DEBUG_MODE=true
-
-# Or inline
-docker run -e DEBUG_MODE=true ...
+```json
+{
+  "webhook_url": "...",
+  "nations": ["Nation1"],
+  "user_agent": "YourNation",
+  "debug_mode": true
+}
 ```
 
 ### Checking Configuration
 
-View the generated configuration:
+View loaded configurations in the logs:
+
+```bash
+docker logs fischer-notifier
+```
+
+You'll see output like:
+```
+Found configuration files in /app/configs:
+major-hourly.json
+minor-frequent.json
+
+Loaded 2 configuration file(s)
+  major-hourly.json: scheduled (0 * * * *)
+  minor-frequent.json: scheduled (*/10 * * * *)
+```
+
+### Manual Test Run
+
+Test a configuration manually:
+
+```bash
+docker run --rm \
+  -v $(pwd)/configs:/app/configs \
+  -v $(pwd)/snapshot:/app/snapshot \
+  fischer-notifier:latest
 
 ```bash
 docker exec fischer-notifier cat /app/config/config.json

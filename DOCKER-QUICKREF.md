@@ -3,9 +3,9 @@
 ## Quick Start
 
 ```bash
-# 1. Copy and configure environment file
-cp .env.example .env
-nano .env  # Edit with your settings
+# 1. Copy and configure example files
+cp configs/major-hourly.json.example configs/major-hourly.json
+nano configs/major-hourly.json  # Edit with your settings
 
 # 2. Run with Docker Compose
 docker-compose up -d
@@ -33,49 +33,66 @@ docker-compose logs -f fischer
 docker-compose ps
 
 # Run once without scheduling
-docker run --rm --env-file .env -v $(pwd)/snapshot:/app/snapshot fischer-notifier:latest
+docker run --rm -v $(pwd)/configs:/app/configs -v $(pwd)/snapshot:/app/snapshot fischer-notifier:latest
 ```
 
-## Environment Variables (Required)
+## Configuration Files (Required)
 
-```bash
-WEBHOOK_URL=https://discord.com/api/webhooks/YOUR_ID/YOUR_TOKEN
-NATIONS=Nation1,Nation2,Nation3
-USER_AGENT=YourMainNation  # REQUIRED for NationStates API compliance
+All configuration is in JSON files in the `configs/` directory:
+
+```json
+{
+  "webhook_url": "https://discord.com/api/webhooks/YOUR_ID/YOUR_TOKEN",
+  "nations": ["Nation1", "Nation2"],
+  "user_agent": "YourMainNation",
+  "schedule": "*/15 * * * *"
+}
 ```
+
+**Required fields:**
+- `webhook_url` - Discord webhook URL
+- `nations` - Array of nations to monitor
+- `user_agent` - Your nation name (NationStates API compliance)
+
+**Optional:**
+- `schedule` - Cron expression (e.g., `"0 * * * *"`)
+- `mention` - Discord role/user to ping
+- `check_snapshot` - Only notify on new auctions
+- `debug_mode` - Verbose logging
 
 ## Common Schedules
 
-```bash
-# Every 15 minutes
-SCHEDULE=*/15 * * * *
+Add to your config's `schedule` field:
 
-# Every hour
-SCHEDULE=0 * * * *
-
-# Every 30 minutes
-SCHEDULE=*/30 * * * *
-
-# Every day at noon UTC
-SCHEDULE=0 12 * * *
+```json
+{
+  "schedule": "*/15 * * * *"  // Every 15 minutes
+}
 ```
+
+Common patterns:
+- `"0 * * * *"` - Every hour
+- `"*/15 * * * *"` - Every 15 minutes
+- `"*/30 * * * *"` - Every 30 minutes
+- `"0 12 * * *"` - Every day at noon UTC
+- `"10,20,30,40,50 * * * *"` - Every 10 min except on the hour
 
 ## Troubleshooting
 
 **No messages sent?**
 - Check logs: `docker-compose logs -f`
-- Verify WEBHOOK_URL is correct
-- Set `CHECK_SNAPSHOT=false` to see all auctions
-- Set `DEBUG_MODE=true` for verbose logging
+- Verify webhook_url is correct in your config
+- Set `"check_snapshot": false` to see all auctions
+- Set `"debug_mode": true` for verbose logging
 
 **Container exits immediately?**
-- Check required env vars are set (WEBHOOK_URL, NATIONS, USER_AGENT)
-- USER_AGENT is now required for NationStates API compliance
+- Check that configs directory has .json files
 - View logs: `docker logs fischer-notifier`
+- Ensure required fields are set (webhook_url, nations, user_agent)
 
-**See the generated config:**
+**See loaded configs:**
 ```bash
-docker exec fischer-notifier cat /app/config/config.json
+docker logs fischer-notifier | head -20
 ```
 
-For complete documentation, see [DOCKER.md](DOCKER.md)
+For complete documentation, see [DOCKER.md](DOCKER.md) and [configs/README.md](configs/README.md)

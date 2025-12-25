@@ -1,9 +1,6 @@
 # Use Node.js LTS version
 FROM node:20-alpine
 
-# Install jq for JSON processing and dcron for scheduling
-RUN apk add --no-cache jq dcron
-
 # Set working directory
 WORKDIR /app
 
@@ -11,7 +8,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies
-RUN npm ci --only=production
+RUN npm ci --omit=dev
 
 # Copy application files
 COPY main.js parseXML.js ./

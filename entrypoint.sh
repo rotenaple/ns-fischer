@@ -72,7 +72,12 @@ function matchesSchedule(cronParts, now) {
     if (cronPart.includes('/')) {
       const [base, step] = cronPart.split('/');
       const stepNum = parseInt(step);
-      return currentValue % stepNum === 0;
+      if (base === '*') {
+        return currentValue % stepNum === 0;
+      } else {
+        const baseNum = parseInt(base);
+        return currentValue >= baseNum && (currentValue - baseNum) % stepNum === 0;
+      }
     }
     if (cronPart.includes(',')) {
       return cronPart.split(',').some(p => parseInt(p) === currentValue);

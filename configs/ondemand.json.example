@@ -1,0 +1,8 @@
+{
+  "webhook_url": "https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN",
+  "nations": ["Nation1", "Nation2"],
+  "user_agent": "YourMainNation",
+  "check_snapshot": false,
+  "snapshot_path": "./snapshot/ondemand.json",
+  "debug_mode": false
+}

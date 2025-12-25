@@ -7,11 +7,18 @@ This script is based on [Kractero/auction-fisher](https://github.com/Kractero/au
 ### Using Docker (Recommended)
 
 1. Clone the repository and navigate to the directory
-2. Copy `.env.example` to `.env` and configure your settings
-3. Run with Docker Compose:
+2. Create your configuration files in the `configs/` directory:
+   ```bash
+   cp configs/major-hourly.json.example configs/major-hourly.json
+   cp configs/minor-frequent.json.example configs/minor-frequent.json
+   ```
+3. Edit the config files with your webhook URL, nations, and user_agent
+4. Run with Docker Compose:
    ```bash
    docker-compose up -d
    ```
+
+**New**: All configuration is now centralized in the `configs/` directory. Each config file can specify its own schedule. No separate environment variables needed!
 
 For detailed Docker instructions, see [DOCKER.md](DOCKER.md).
 
@@ -20,34 +27,52 @@ For detailed Docker instructions, see [DOCKER.md](DOCKER.md).
 1. Download the [Node.js](https://nodejs.org/en/download/current) matching your operating system.
 2. Enter the directory and run npm install.
 3. Create a webhook on a discord server.
-4. Create a configuration file (see below).
+4. Create configuration files in the `configs/` directory or specify paths directly.
 
-## Setup
+## Centralized Configuration
+
+All configuration files are now stored in the `configs/` directory. Each config file can include its own schedule, making it easy to manage multiple update frequencies from one place.
+
+See [configs/README.md](configs/README.md) for detailed configuration documentation.
+
+### Quick Example
+
+Create `configs/hourly.json`:
+```json
+{
+  "webhook_url": "https://discord.com/api/webhooks/...",
+  "nations": ["Nation1", "Nation2"],
+  "user_agent": "YourMainNation",
+  "schedule": "0 * * * *",
+  "mention": "<@&ROLE_ID>",
+  "check_snapshot": true,
+  "snapshot_path": "./snapshot/hourly.json"
+}
+```
+
+Create `configs/frequent.json`:
+```json
+{
+  "webhook_url": "https://discord.com/api/webhooks/...",
+  "nations": ["Nation1", "Nation2"],
+  "user_agent": "YourMainNation",
+  "schedule": "*/10 * * * *",
+  "no_ping": true,
+  "check_snapshot": false,
+  "snapshot_path": "./snapshot/frequent.json"
+}
+```
+
+Run: `docker-compose up -d`
+
+The scheduler automatically runs each config on its own schedule.
 
 ## Configuration File Basics
 
-- Configuration files are in JSON format.
-- You can create multiple configuration files for different use cases.
-- **NEW**: You can now run multiple configurations at once by providing multiple config files:
-  ```bash
-  node main.js config1.json config2.json config3.json
-  ```
-- Each configuration will be processed sequentially, allowing for different update frequencies.
-
-## Running Multiple Configurations
-
-The script now supports running multiple configurations in a single invocation. This is useful for setting up different update frequencies:
-
-**Example Use Case**: Major updates hourly + minor updates every 10 minutes
-
-1. Create `config-major.json` for hourly major updates:
-   ```json
-   {
-     "webhook_url": "YOUR_WEBHOOK_URL",
-     "nations": ["Nation1", "Nation2"],
-     "user_agent": "YourMainNation",
-     "check_snapshot": true,
-     "snapshot_path": "./snapshot/major.json",
+- Configuration files are in JSON format stored in the `configs/` directory
+- Each config can specify its own `schedule` field with a cron expression
+- If no schedule is specified, the config runs once on startup
+- You can also run configs manually: `node main.js configs/myconfig.json`
      "mention": "<@&ROLE_ID>",
      "no_ping": false
    }
@@ -97,16 +122,19 @@ The script now supports running multiple configurations in a single invocation. 
 
 ## Configuration Options
 
+All configs are stored in JSON files in the `configs/` directory:
+
 ```json
 {
   "webhook_url": "YOUR_DISCORD_WEBHOOK_URL",
   "nations": ["NATION1", "NATION2", "NATION3"],
   "user_agent": "YOUR_NATION_NAME",
-  "debug_mode": false,
+  "schedule": "*/15 * * * *",
   "mention": "<@&ROLE_ID>",
   "no_ping": false,
   "snapshot_path": "./snapshot/auction_snapshot.json",
-  "check_snapshot": false
+  "check_snapshot": false,
+  "debug_mode": false
 }
 ```
 
@@ -117,11 +145,12 @@ The script now supports running multiple configurations in a single invocation. 
 | `webhook_url`    | **Yes**  | -                                    | Your Discord webhook URL.                                                                                                 |
 | `nations`        | **Yes**  | -                                    | Array of nation names to monitor.                                                                                         |
 | `user_agent`     | **Yes**  | -                                    | **REQUIRED**: Your nation name for API requests. Required to comply with NationStates API rules.                          |
-| `debug_mode`     | No       | `false`                              | Enable additional logging.                                                                                                |
+| `schedule`       | No       | -                                    | Cron expression for when to run (e.g., `"0 * * * *"` for hourly). If omitted, runs once on startup.                      |
 | `mention`        | No       | -                                    | Discord role/user to mention. Use `<@&ROLE_ID>` or `<@USER_ID>`.                                                          |
 | `no_ping`        | No       | `false`                              | When `true`, sends messages without @user mentions.                                                                       |
 | `snapshot_path`  | No       | `"./snapshot/auction_snapshot.json"` | Path for the auction snapshot file.                                                                                       |
 | `check_snapshot` | No       | `false`                              | When `true`, only sends messages if new bids are detected since the last run. When `false`, sends a message on every run. |
+| `debug_mode`     | No       | `false`                              | Enable additional logging.                                                                                                |
 
 **Note**: CTE (Ceased To Exist) checking is now automatic and uses a quota-free method via the [unsmurf currentNations.txt](https://raw.githubusercontent.com/ns-rot/unsmurf/refs/heads/main/public/static/currentNations.txt) file.
 

@@ -5,13 +5,13 @@ services:
     build: .
     image: fischer-notifier:latest
     container_name: fischer-notifier
-    env_file:
-      - .env
     volumes:
       # Mount snapshot directory to persist auction snapshots
       - ./snapshot:/app/snapshot
-      # Mount config directory for JSON config files
-      - ./config:/app/config
+      # Mount config directory for JSON config files with schedules
+      - ./configs:/app/configs
     restart: unless-stopped
     environment:
       - NODE_ENV=production
+      # All configuration is now in JSON files under /app/configs
+      # No .env file required - pass environment variables here or via command line

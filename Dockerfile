@@ -12,13 +12,14 @@ RUN npm ci --omit=dev
 
 # Copy application files
 COPY main.js parseXML.js ./
+COPY lib ./lib
 
 # Copy entrypoint script
 COPY entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 
-# Create directories for snapshot and config
-RUN mkdir -p /app/snapshot /app/config
+# Create directories for snapshot and configs
+RUN mkdir -p /app/snapshot /app/configs
 
 # Set environment variables with defaults
 ENV NODE_ENV=production

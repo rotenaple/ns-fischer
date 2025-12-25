@@ -41,6 +41,7 @@ docker run --rm --env-file .env -v $(pwd)/snapshot:/app/snapshot fischer-notifie
 ```bash
 WEBHOOK_URL=https://discord.com/api/webhooks/YOUR_ID/YOUR_TOKEN
 NATIONS=Nation1,Nation2,Nation3
+USER_AGENT=YourMainNation  # REQUIRED for NationStates API compliance
 ```
 
 ## Common Schedules
@@ -68,7 +69,8 @@ SCHEDULE=0 12 * * *
 - Set `DEBUG_MODE=true` for verbose logging
 
 **Container exits immediately?**
-- Check required env vars are set (WEBHOOK_URL, NATIONS)
+- Check required env vars are set (WEBHOOK_URL, NATIONS, USER_AGENT)
+- USER_AGENT is now required for NationStates API compliance
 - View logs: `docker logs fischer-notifier`
 
 **See the generated config:**

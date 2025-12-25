@@ -154,9 +154,9 @@ docker run -d \
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `WEBHOOK_URL` | Yes | - | Discord webhook URL for notifications |
-| `NATIONS` | Yes | - | Comma-separated list of nations to monitor |
-| `USER_AGENT` | No | First nation | Nation name for API requests |
+| `WEBHOOK_URL` | **Yes** | - | Discord webhook URL for notifications |
+| `NATIONS` | **Yes** | - | Comma-separated list of nations to monitor |
+| `USER_AGENT` | **Yes** | - | **REQUIRED**: Your nation name for API requests (NationStates API compliance) |
 
 ### Notification Settings
 
@@ -170,9 +170,10 @@ docker run -d \
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `CHECK_CTE` | No | `true` | Check if nations have Ceased To Exist |
 | `SNAPSHOT_PATH` | No | `./snapshot/auction_snapshot.json` | Path for auction snapshot file |
 | `CHECK_SNAPSHOT` | No | `false` | Only send messages for new auctions |
+
+**Note:** CTE (Ceased To Exist) checking is automatic and quota-free using the [unsmurf currentNations.txt](https://raw.githubusercontent.com/ns-rot/unsmurf/refs/heads/main/public/static/currentNations.txt) file.
 
 ### Scheduling
 

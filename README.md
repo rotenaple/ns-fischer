@@ -14,9 +14,8 @@ Run the pre-built Docker image. Recommended for most users.
     mkdir -p ns-fischer
     cd ns-fischer
 
-    # Clone to 'source' folder to get config.json.example
-    git clone https://github.com/rotenaple/ns-fischer.git source
-    cp source/config.json.example config.json
+    # Download the config template
+    curl -L https://raw.githubusercontent.com/rotenaple/ns-fischer/main/config.json.example -o config.json
 
     # Edit the config file
     nano config.json

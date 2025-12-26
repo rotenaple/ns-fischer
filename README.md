@@ -1,126 +1,168 @@
-# Enhanced Auction Fisher Configuration Guide
+# Enhanced Auction Fisher
 
-This script is based on [Kractero/auction-fisher](https://github.com/Kractero/auction-fisher) with additional features.
+A Discord notification bot for NationStates auctions, based on [Kractero/auction-fisher](https://github.com/Kractero/auction-fisher) with additional features.
 
-## Setup
+## Quick Start (Prebuilt Docker)
 
-1. Download the [Node.js](https://nodejs.org/en/download/current) matching your operating system.
-1. Enter the directory and run npm install.
-1. Create a webhook on a discord server.
+1. Clone the repository (for config/examples):
+   ```bash
+   git clone https://github.com/your-repo/fischer.git
+   cd fischer
+   ```
 
-## Configuration File Basics
+2. Copy and edit config:
+   ```bash
+   cp config.json.example config.json
+   # Edit config.json with your Discord webhook and nation details
+   ```
 
-- Configuration files are in JSON format.
-- You can create multiple configuration files for different use cases.
-- When running the script, provide the path to your config file as a command-line argument:
-  ```
-  node main.js /path/to/your/config.json
-  ```
+3. Pull the prebuilt image (optional; `docker compose up` will pull if missing):
+   ```bash
+   docker compose pull
+   ```
 
-## Use Cases for Multiple Configurations
+4. Run with Docker (uses the published GHCR image by default):
+   ```bash
+   docker compose up -d
+   ```
 
-1. **Varied Message Frequencies**:
+That's it! The container will start monitoring auctions according to your config using the prebuilt image.
 
-   - Create one config with `check_snapshot: true` for notifications only on new activity.
-   - Create another config with `check_snapshot: false` for regular updates regardless of new bids.
-   - Both configs can use the same snapshot file to track what's been seen before.
+## Configuration
 
-2. **Ping vs. No-Ping Updates**:
+All settings go in `config.json`. Each named config can have its own schedule.
 
-   - Set up one config with `no_ping: false` for important updates that should notify users.
-   - Set up another with `no_ping: true` for regular updates without notifications.
-
-3. **Multiple Discord Servers**:
-   - Set up different configs to send auction information to various Discord servers or channels.
-
-## Configuration Options
-
+### Basic Example
 ```json
 {
-  "webhook_url": "YOUR_DISCORD_WEBHOOK_URL",
-  "nations": ["NATION1", "NATION2", "NATION3"],
-  "debug_mode": false,
-  "mention": "<@&ROLE_ID>",
-  "no_ping": false,
-  "check_cte": true,
-  "snapshot_path": "./snapshot/auction_snapshot.json",
-  "check_snapshot": false,
-  "user_agent": "YOUR_NATION_NAME"
+  "myconfig": {
+    "webhook_url": "https://discord.com/api/webhooks/...",
+    "nations": ["Nation1", "Nation2"],
+    "user_agent": "YourNation"
+  }
 }
 ```
 
-### Key Options Explained
+### Key Options
+- `webhook_url`: Your Discord webhook URL (required)
+- `nations`: Array of nations to monitor (required)
+- `user_agent`: Your nation name (required)
+- `schedule`: Cron expression (optional, runs once if omitted)
+- `mention`: Discord role to ping (optional)
+- `check_snapshot`: Only notify on new auctions (optional)
 
-| Option           | Required | Default                              | Description                                                                                                               |
-| ---------------- | -------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
-| `webhook_url`    | Yes      | -                                    | Your Discord webhook URL.                                                                                                 |
-| `nations`        | Yes      | -                                    | Array of nation names to monitor.                                                                                         |
-| `debug_mode`     | No       | `false`                              | Enable additional logging.                                                                                                |
-| `mention`        | No       | -                                    | Discord role/user to mention. Use `<@&ROLE_ID>` or `<@USER_ID>`.                                                          |
-| `no_ping`        | No       | `false`                              | When `true`, sends messages without @user mentions.                                                                       |
-| `check_cte`      | No       | `true`                               | Check if nations have Ceased To Exist. Set to `false` to reduce API calls and increase speed.                             |
-| `snapshot_path`  | No       | `"./snapshot/auction_snapshot.json"` | Path for the auction snapshot file.                                                                                       |
-| `check_snapshot` | No       | `false`                              | When `true`, only sends messages if new bids are detected since the last run. When `false`, sends a message on every run. |
-| `user_agent`     | No       | -                                    | Your nation name for API requests. Defaults to the first nation in `nations` if not supplied.                             |
+## Docker Deployment
 
-## Snapshot Functionality
+Run using Docker with JSON configuration.
 
-- The snapshot is used to track which auctions have been seen in previous runs.
-- When `check_snapshot` is set to `true`, the bot will only send messages when new auctions are detected since the last run.
-- This feature helps prevent spam and ensures that users are only notified of fresh auction activity.
-- When using multiple configs, you can set them to use the same snapshot file to ensure consistent tracking across different run frequencies or Discord targets.
+### Docker Quick Start
 
-## Auction Resolution Time
+1. Clone the repo:
+   ```bash
+   git clone https://github.com/rotenaple/fischer.git
+   cd fischer
+   ```
 
-- The script estimates auction resolution time based on current asks and bids.
-- This estimation can be inaccurate if:
-  - The initial ask/bid that started the auction has been retracted.
-  - Any overbids or underasks occuring.
+2. Configure:
+   ```bash
+   cp config.json.example config.json
+   # Edit config.json with your Discord webhook and nations
+   ```
 
-## Example Configurations
+3. Run:
+   ```bash
+   docker compose up -d
+   ```
 
-### Regular Updates (No Pings, Always Send)
+### Docker Commands
 
-```json
-{
-  "webhook_url": "https://discord.com/api/webhooks/123456789/abcde",
-  "nations": ["Nation1", "Nation2", "Nation3"],
-  "no_ping": true,
-  "check_snapshot": false,
-  "snapshot_path": "./shared_snapshot.json",
-  "check_cte": false
-}
+```bash
+docker compose up -d          # Start
+docker compose logs -f        # View logs
+docker compose down           # Stop
+docker compose restart        # Restart
+docker compose pull           # Update to the latest published image
+docker compose ps             # Check status
+docker run --rm -v $(pwd)/snapshot:/app/snapshot -v $(pwd)/config.json:/app/config.json ghcr.io/rotenaple/ns-fischer:latest  # Run once
 ```
 
-### New Activity Alerts (With Pings, Only on New Bids)
-
-```json
-{
-  "webhook_url": "https://discord.com/api/webhooks/987654321/fghij",
-  "nations": ["Nation1", "Nation2", "Nation3"],
-  "mention": "<@&123456789>",
-  "no_ping": false,
-  "check_snapshot": true,
-  "snapshot_path": "./shared_snapshot.json",
-  "check_cte": true
-}
+### Docker CLI
+```bash
+docker pull ghcr.io/rotenaple/ns-fischer:latest
+docker run -d --name ns-fischer \
+   -v $(pwd)/snapshot:/app/snapshot \
+   -v $(pwd)/config.json:/app/config.json \
+   ghcr.io/rotenaple/ns-fischer:latest
 ```
 
-Note:
+## Prebuilt Images & CI
 
-- The first config will always send a message on each run, without pinging users.
-- The second config will only send a message (with pings) when new bids are detected.
-- Both configs use the same `snapshot_path` to ensure consistency in tracking new activity.
+The Docker image is built and published to GitHub Container Registry on every push to `main` and on tags via [.github/workflows/docker-publish.yml](.github/workflows/docker-publish.yml). Available tags:
+- `latest` (default on `main`)
+- `sha-<commit>` for every commit
+- Git tags like `v1.2.3` when pushing version tags
 
-## Running Multiple Configurations
+Override the image if you want to pin to a specific tag:
 
-You can set up cron jobs or scheduled tasks to run the script with different config files at various intervals. For example:
+```bash
+FISCHER_IMAGE=ghcr.io/rotenaple/ns-fischer:sha-<commit> docker compose up -d
+```
 
-- Run the regular update config every 15 minutes:
-  ```
-  */15 * * * * node /path/to/script.js /path/to/regular_update_config.json
-  ```
-- Run the new activity alert config every hour:
-  ```
-  0 * * * * node /path/to/script.js /path/to/new_activity_alert_config.json
-  ```
+### Volumes
+- `./snapshot:/app/snapshot` - Persists auction data
+- `./config.json:/app/config.json` - Your configuration
+
+### Scheduling
+Add `schedule` field with cron expression (e.g., `"*/15 * * * *"` for every 15 min).
+
+Common schedules:
+- `"*/15 * * * *"` - Every 15 min
+- `"0 * * * *"` - Hourly
+- `"*/30 * * * *"` - Every 30 min
+
+### Troubleshooting
+**No messages?**
+- Check logs: `docker-compose logs -f`
+- Set `"check_snapshot": false` to see all auctions
+- Set `"debug_mode": true` for verbose logging
+
+**Container exits?**
+- Ensure config.json exists and has required fields
+
+**See loaded configs:**
+```bash
+docker logs ns-fischer | head -20
+```
+
+## Unraid Setup
+
+Run on Unraid using Docker.
+
+### Unraid Quick Start
+
+1. Open Unraid web interface → Apps → Search "ns-fischer" (when available)
+
+2. Or manually:
+   - SSH into Unraid
+   - Create directory: `mkdir -p /mnt/user/appdata/fischer`
+   - Clone repo: `cd /mnt/user/appdata/fischer && git clone https://github.com/rotenaple/fischer.git source`
+   - Build: `cd source && docker build -t ns-fischer:latest .`
+
+3. Create config:
+   ```bash
+   cp source/config.json.example config.json
+   nano config.json  # Add your Discord webhook and nations
+   ```
+
+4. Run container via Unraid Docker page:
+   - Repository: `ghcr.io/rotenaple/ns-fischer:latest` (or another published tag)
+   - Add volumes:
+     - Host: `/mnt/user/appdata/fischer/config.json` → Container: `/app/config.json`
+     - Host: `/mnt/user/appdata/fischer/snapshot` → Container: `/app/snapshot`
+
+### Unraid Configuration
+Same as Docker - single `config.json` file.
+
+### Unraid Volumes
+- Config: Mount your config.json
+- Snapshot: `/mnt/user/appdata/fischer/snapshot` for persistence

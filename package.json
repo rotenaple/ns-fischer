@@ -1,14 +1,38 @@
 {
-  "name": "notifier",
+  "name": "ns-fischer",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+  "description": "Discord notification bot for NationStates auctions with enhanced features",
+  "main": "main.js",
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
   },
-  "keywords": [],
-  "author": "",
+  "scripts": {
+    "start": "node main.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "docker:build": "docker build -t ns-fischer:latest .",
+    "docker:run": "docker compose up -d",
+    "docker:logs": "docker compose logs -f",
+    "docker:stop": "docker compose down"
+  },
+  "keywords": [
+    "nationstates",
+    "discord",
+    "bot",
+    "auction",
+    "notifier",
+    "cards"
+  ],
+  "author": "rotenaple",
   "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rotenaple/fischer.git"
+  },
+  "bugs": {
+    "url": "https://github.com/rotenaple/fischer/issues"
+  },
+  "homepage": "https://github.com/rotenaple/fischer#readme",
   "dependencies": {
     "discord-webhook-node": "^1.1.8",
     "fast-xml-parser": "^4.3.2"

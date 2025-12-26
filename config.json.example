@@ -1,0 +1,23 @@
+{
+  "major": {
+    "webhook_url": "https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN",
+    "nations": ["Nation1", "Nation2", "Nation3"],
+    "user_agent": "YourMainNation",
+    "schedule": "0 * * * *",
+    "mention": "<@&ROLE_ID>",
+    "no_ping": false,
+    "check_snapshot": true,
+    "snapshot_path": "./snapshot/major.json",
+    "debug_mode": false
+  },
+  "minor": {
+    "webhook_url": "https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN",
+    "nations": ["Nation1", "Nation2", "Nation3"],
+    "user_agent": "YourMainNation",
+    "schedule": "10,20,30,40,50 * * * *",
+    "no_ping": true,
+    "check_snapshot": false,
+    "snapshot_path": "./snapshot/minor.json",
+    "debug_mode": false
+  }
+}

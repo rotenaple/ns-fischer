@@ -1,6 +1,7 @@
-# Enhanced Auction Fisher
+# NS Fischer
 
-A Discord notification bot for NationStates auctions, based on [Kractero/auction-fisher](https://github.com/Kractero/auction-fisher) with additional features.
+A lightweight Discord notification bot for NationStates auctions. Forked and
+extended from [Kractero/auction-fisher](https://github.com/Kractero/auction-fisher), packaged for easy Docker deployment.
 
 ## Quick Start
 

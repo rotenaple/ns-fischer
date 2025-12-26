@@ -5,7 +5,16 @@
 
 set -e
 
-# Create snapshot directory
+# Fix permissions for snapshot directory if running as root
+if [ "$(id -u)" = "0" ]; then
+    mkdir -p /app/snapshot
+    chown -R nodejs:nodejs /app/snapshot
+    
+    # Drop privileges and run the script again as nodejs
+    exec su-exec nodejs "$0" "$@"
+fi
+
+# Create snapshot directory (if not exists)
 mkdir -p /app/snapshot
 
 # Check if config.json exists

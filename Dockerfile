@@ -13,8 +13,8 @@ RUN npm config set cache /tmp/.npm-cache --global \
 # Final stage: assemble runtime image
 FROM node:20-alpine@sha256:bf77dc26e48ea95fca9d1aceb5acfa69d2e546b765ec2abfb502975f1a2d4def
 
-# Install dumb-init for proper signal handling
-RUN apk update && apk upgrade && apk add --no-cache dumb-init && rm -rf /var/cache/apk/*
+# Install dumb-init for proper signal handling and su-exec for user switching
+RUN apk update && apk upgrade && apk add --no-cache dumb-init su-exec && rm -rf /var/cache/apk/*
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001 -G nodejs
@@ -35,9 +35,6 @@ RUN chmod +x /app/entrypoint.sh
 RUN mkdir -p /app/snapshot /app/snapshot_internal \
   && chown -R nodejs:nodejs /app/snapshot /app/snapshot_internal \
   && chown -R nodejs:nodejs /app
-
-# Switch to non-root user
-USER nodejs
 
 # Environment
 ENV NODE_ENV=production \

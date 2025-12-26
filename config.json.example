@@ -7,7 +7,7 @@
     "mention": "<@&ROLE_ID>",
     "no_ping": false,
     "check_snapshot": true,
-    "snapshot_path": "./snapshot/major.json",
+    "snapshot_path": "./snapshot/snapshot.json",
     "debug_mode": false
   },
   "minor": {
@@ -17,7 +17,7 @@
     "schedule": "10,20,30,40,50 * * * *",
     "no_ping": true,
     "check_snapshot": false,
-    "snapshot_path": "./snapshot/minor.json",
+    "snapshot_path": "./snapshot/snapshot.json",
     "debug_mode": false
   }
 }

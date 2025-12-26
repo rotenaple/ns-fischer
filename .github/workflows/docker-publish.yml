@@ -94,10 +94,17 @@ jobs:
           # create file named by the digest (without the sha256: prefix)
           touch "/tmp/digests/${digest#sha256:}"
 
+      - name: Set artifact name (platform-safe)
+        run: |
+          platform='${{ matrix.platform }}'
+          # replace slash with hyphen so the artifact name is valid on all filesystems
+          safe_platform=${platform//\//-}
+          echo "ARTIFACT_NAME=digests-${safe_platform}" >> $GITHUB_ENV
+
       - name: Upload digest
         uses: actions/upload-artifact@v4
         with:
-          name: digests-${{ matrix.platform }}
+          name: ${{ env.ARTIFACT_NAME }}
           path: /tmp/digests/*
           if-no-files-found: error
           retention-days: 1

@@ -142,8 +142,25 @@ jobs:
       - name: Create manifest list and push
         run: |
           set -euo pipefail
-          # Use the metadata JSON to generate the -t arguments for the final manifest
-          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") $(printf '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)
+          # ensure we operate from the digests directory where artifacts were downloaded
+          cd /tmp/digests
+          # enable nullglob so an empty directory yields empty array instead of literal '*'
+          shopt -s nullglob
+          files=(*)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No digest files found in /tmp/digests"
+            ls -la /tmp/digests || true
+            exit 1
+          fi
+
+          images_args=()
+          for f in "${files[@]}"; do
+            # each file is the sha256 hex string we touched earlier
+            images_args+=( "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@sha256:${f}" )
+          done
+
+          echo "Creating manifest with images: ${images_args[*]}"
+          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") "${images_args[@]}"
 
       - name: Set job output
         id: set-output

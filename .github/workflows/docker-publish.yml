@@ -166,7 +166,15 @@ jobs:
         id: set-output
         run: |
           primary_tag=$(jq -r '.tags[0]' <<< "$DOCKER_METADATA_OUTPUT_JSON")
-          echo "image-uri=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${primary_tag}" >> $GITHUB_OUTPUT
+          echo "primary_tag=$primary_tag"
+          # If primary_tag looks like a fully-qualified image (contains a '/'), use it as-is.
+          if echo "$primary_tag" | grep -q '/'; then
+            image_uri="$primary_tag"
+          else
+            image_uri="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${primary_tag}"
+          fi
+          echo "image-uri=$image_uri" >> $GITHUB_OUTPUT
+          echo "Determined image-uri: $image_uri"
 
   security-scan:
     if: github.event_name != 'pull_request'

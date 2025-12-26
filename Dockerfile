@@ -16,9 +16,12 @@ WORKDIR /app
 # Copy package files first for better layer caching
 COPY --chown=nodejs:nodejs package*.json ./
 
-# Install dependencies with clean npm cache
-RUN npm ci --omit=dev --no-audit --no-fund && \
-    npm cache clean --force
+# Install dependencies as non-root and use /tmp as npm cache to avoid touching /root/.npm
+USER nodejs
+RUN npm config set cache /tmp/.npm-cache --global && \
+    npm ci --omit=dev --no-audit --no-fund && \
+    rm -rf /tmp/.npm-cache
+USER root
 
 # Copy application files with proper ownership
 COPY --chown=nodejs:nodejs main.js parseXML.js ./

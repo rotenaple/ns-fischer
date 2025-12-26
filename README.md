@@ -23,6 +23,90 @@ A Discord notification bot for NationStates auctions, based on [Kractero/auction
 
 The container will start monitoring auctions according to your config using the prebuilt GHCR image.
 
+**Step-by-step Docker Setup**
+
+1. Install Docker:
+
+- Windows/macOS: Install Docker Desktop (WSL2 is recommended on Windows).
+- Linux: Install Docker Engine and Docker Compose (your distro package manager or Docker docs).
+
+2. Clone the repository and enter the folder:
+
+PowerShell:
+```powershell
+git clone https://github.com/rotenaple/ns-fischer.git
+cd ns-fischer
+```
+
+bash / sh:
+```bash
+git clone https://github.com/rotenaple/ns-fischer.git
+cd ns-fischer
+```
+
+3. Copy the example config and edit it. Use an editor you have installed (VS Code, nano, notepad, etc.):
+
+PowerShell:
+```powershell
+Copy-Item config.json.example config.json
+code config.json    # (if you have VS Code)
+# or
+notepad config.json
+```
+
+bash / sh:
+```bash
+cp config.json.example config.json
+${EDITOR:-nano} config.json
+```
+
+Required fields: `webhook_url`, `nations` (array), and `user_agent`. Leave `schedule` in place for scheduled runs, or remove it to run once.
+
+4. Create the `snapshot` directory (persists state between runs):
+
+PowerShell:
+```powershell
+New-Item -ItemType Directory -Force .\snapshot
+```
+
+bash / sh:
+```bash
+mkdir -p ./snapshot
+```
+
+5. Start with Docker Compose (recommended):
+
+```bash
+docker compose up -d
+```
+
+Notes:
+- If your system uses the older CLI, `docker-compose up -d` also works.
+- On Windows, if using PowerShell without WSL, Docker may prompt to allow file sharing for the drive containing the repo.
+
+6. Check logs to confirm the container loaded your config:
+
+```bash
+docker compose logs -f
+# or for a single container
+docker logs -f ns-fischer
+```
+
+Run-once / testing options:
+- Use `docker run --rm ...` shown in the Docker CLI examples earlier in this README to run a single container instance. On Windows, prefer running from WSL or ensure path formatting is correct for Docker.
+- Or run locally (requires Node.js >=20):
+
+```bash
+node main.js ./config.json
+```
+
+Common issues & fixes:
+- "Error: /app/config.json not found" — ensure `config.json` exists in the project root and that you ran `docker compose up` from that folder so the file is mounted to `/app/config.json` inside the container.
+- Permission / mount problems — on Windows enable file sharing for the drive in Docker Desktop or run Docker inside WSL2 for more reliable mounts.
+- If you only want to see output during testing, set `check_snapshot: false` in `config.json` so the script posts matches every run.
+
+If you want, I can add a minimal `config.json` example snippet with placeholder values to make first-time setup even easier.
+
 ## Configuration
 
 All settings go in `config.json`. Each named config can have its own schedule.
@@ -67,6 +151,8 @@ Complete configuration fields
 - `no_ping` (boolean, optional, default: `false`): When `true`, suppresses pinging `mention` in messages.
 - `check_snapshot` (boolean, optional, default: `true`): When `true`, only sends notifications when there are new auctions compared to the saved snapshot. When `false`, every run will post matches.
 - `snapshot_path` (string, optional, default: `./snapshot/snapshot.json`): File path used to read/write snapshot state for change-detection.
+ - `check_snapshot` (boolean, optional, default: `false`): When `true`, only sends notifications when there are new auctions compared to the saved snapshot. When `false`, every run will post matches.
+ - `snapshot_path` (string, optional, default: `./snapshot/auction_snapshot.json`): File path used to read/write snapshot state for change-detection.
 - `debug_mode` (boolean, optional, default: `false`): Enable verbose debug logging for troubleshooting.
 
 Notes:

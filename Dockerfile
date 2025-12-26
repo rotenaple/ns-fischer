@@ -1,54 +1,51 @@
-# Use Node.js LTS version with security updates
-FROM node:20-alpine@sha256:bf77dc26e48ea95fca9d1aceb5acfa69d2e546b765ec2abfb502975f1a2d4def
-
-# Install security updates and dumb-init for proper signal handling
-RUN apk update && apk upgrade && \
-    apk add --no-cache dumb-init && \
-    rm -rf /var/cache/apk/*
-
-# Create non-root user
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001 -G nodejs
-
-# Set working directory
+# Multi-stage Dockerfile
+# Builder stage: install dependencies
+FROM node:20-alpine@sha256:bf77dc26e48ea95fca9d1aceb5acfa69d2e546b765ec2abfb502975f1a2d4def AS builder
 WORKDIR /app
 
-# Copy package files first for better layer caching
-COPY --chown=nodejs:nodejs package*.json ./
+# Copy package files and lockfile, then install dependencies
+COPY package*.json ./
+RUN npm config set cache /tmp/.npm-cache --global \
+ && npm ci --omit=dev --no-audit --no-fund --no-optional --unsafe-perm --silent \
+ && npm cache clean --force || true \
+ && rm -rf /tmp/.npm-cache || true
 
-# Install dependencies as non-root and use /tmp as npm cache to avoid touching /root/.npm
-USER nodejs
-RUN npm config set cache /tmp/.npm-cache --global && \
-    npm ci --omit=dev --no-audit --no-fund --no-optional --unsafe-perm --silent && \
-    npm cache clean --force || true && \
-    rm -rf /tmp/.npm-cache || true
-USER root
+# Final stage: assemble runtime image
+FROM node:20-alpine@sha256:bf77dc26e48ea95fca9d1aceb5acfa69d2e546b765ec2abfb502975f1a2d4def
 
-# Copy application files with proper ownership
+# Install dumb-init for proper signal handling
+RUN apk update && apk upgrade && apk add --no-cache dumb-init && rm -rf /var/cache/apk/*
+
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001 -G nodejs
+
+WORKDIR /app
+
+# Copy installed node_modules from builder
+COPY --from=builder /app/node_modules ./node_modules
+
+# Copy application files and other assets
 COPY --chown=nodejs:nodejs main.js parseXML.js ./
 COPY --chown=nodejs:nodejs lib ./lib
-
-# Copy and set up entrypoint script
+COPY --chown=nodejs:nodejs package*.json ./
 COPY --chown=nodejs:nodejs entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 
-# Create directories for snapshots with proper ownership
-RUN mkdir -p /app/snapshot && \
-    chown -R nodejs:nodejs /app/snapshot && \
-    chown -R nodejs:nodejs /app
+# Create snapshot dir and set ownership
+RUN mkdir -p /app/snapshot && chown -R nodejs:nodejs /app/snapshot && chown -R nodejs:nodejs /app
 
 # Switch to non-root user
 USER nodejs
 
-# Set environment variables
+# Environment
 ENV NODE_ENV=production \
     NODE_OPTIONS="--unhandled-rejections=strict" \
     NPM_CONFIG_UPDATE_NOTIFIER=false
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD node -e "console.log('Health check passed')" || exit 1
+  CMD node -e "console.log('Health check passed')" || exit 1
 
-# Use dumb-init as PID 1 for proper signal handling
+# Entrypoint
 ENTRYPOINT ["dumb-init", "--"]
 CMD ["/app/entrypoint.sh"]

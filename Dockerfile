@@ -31,8 +31,10 @@ COPY --chown=nodejs:nodejs package*.json ./
 COPY --chown=nodejs:nodejs entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 
-# Create snapshot dir and set ownership
-RUN mkdir -p /app/snapshot && chown -R nodejs:nodejs /app/snapshot && chown -R nodejs:nodejs /app
+# Create snapshot dirs and set ownership
+RUN mkdir -p /app/snapshot /app/snapshot_internal \
+  && chown -R nodejs:nodejs /app/snapshot /app/snapshot_internal \
+  && chown -R nodejs:nodejs /app
 
 # Switch to non-root user
 USER nodejs

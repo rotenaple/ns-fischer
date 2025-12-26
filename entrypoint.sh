@@ -39,6 +39,7 @@ echo "Loading configuration from /app/config.json"
 cat > /tmp/scheduler.js << 'SCHEDULER_EOF'
 const { spawn } = require('child_process');
 const fs = require('fs');
+const path = require('path');
 
 // Parse cron expression
 function parseSchedule(cronExpr) {
@@ -135,6 +136,28 @@ Object.entries(allConfigs).forEach(([name, config]) => {
 
 // Function to run a specific config
 function runConfig(name, config) {
+  // Ensure snapshot path is writable; if not, fall back to an internal writable path
+  function makeWritableSnapshotPath(requestedPath, name) {
+    try {
+      const dir = path.dirname(requestedPath || './snapshot/snapshot.json');
+      fs.mkdirSync(dir, { recursive: true });
+      const testPath = path.join(dir, `.permtest-${Date.now()}`);
+      fs.writeFileSync(testPath, '');
+      fs.unlinkSync(testPath);
+      return requestedPath;
+    } catch (err) {
+      // Fallback to internal snapshot directory inside the container
+      const fallbackDir = '/app/snapshot_internal';
+      try { fs.mkdirSync(fallbackDir, { recursive: true }); } catch (e) {}
+      return path.join(fallbackDir, `${name}-snapshot.json`);
+    }
+  }
+
+  // Apply snapshot path fallback if necessary
+  if (config && typeof config === 'object') {
+    config.snapshot_path = makeWritableSnapshotPath(config.snapshot_path, name);
+  }
+
   // Create a temporary config file for this specific config
   const tempConfigPath = `/tmp/config-${name}.json`;
   fs.writeFileSync(tempConfigPath, JSON.stringify(config, null, 2));

@@ -19,8 +19,9 @@ COPY --chown=nodejs:nodejs package*.json ./
 # Install dependencies as non-root and use /tmp as npm cache to avoid touching /root/.npm
 USER nodejs
 RUN npm config set cache /tmp/.npm-cache --global && \
-    npm ci --omit=dev --no-audit --no-fund && \
-    rm -rf /tmp/.npm-cache
+    npm ci --omit=dev --no-audit --no-fund --no-optional --unsafe-perm --silent && \
+    npm cache clean --force || true && \
+    rm -rf /tmp/.npm-cache || true
 USER root
 
 # Copy application files with proper ownership

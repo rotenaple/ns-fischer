@@ -74,7 +74,7 @@ export NATIONS='TestNation1,TestNation2'
 export DEBUG_MODE='true'
 export CHECK_CTE='false'
 
-mkdir -p /tmp/fischer-test
+mkdir -p /tmp/ns-fischer-test
 
 node -e "
 const config = {
@@ -89,14 +89,14 @@ const config = {
   user_agent: process.env.USER_AGENT || ''
 };
 const fs = require('fs');
-fs.writeFileSync('/tmp/fischer-test/config.json', JSON.stringify(config, null, 2));
+fs.writeFileSync('/tmp/ns-fischer-test/config.json', JSON.stringify(config, null, 2));
 console.log('Config generated successfully');
 "
 
-if [ -f "/tmp/fischer-test/config.json" ]; then
+if [ -f "/tmp/ns-fischer-test/config.json" ]; then
     echo "✓ Config generation successful"
     echo "Generated config:"
-    cat /tmp/fischer-test/config.json
+    cat /tmp/ns-fischer-test/config.json
 else
     echo "✗ Config generation failed"
     exit 1

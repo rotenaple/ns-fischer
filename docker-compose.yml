@@ -1,10 +1,11 @@
 version: '3.8'
 
 services:
-  fischer:
-    build: .
-    image: fischer-notifier:latest
-    container_name: fischer-notifier
+  ns-fischer:
+    image: ${FISCHER_IMAGE:-ghcr.io/rotenaple/ns-fischer:latest}
+    # Uncomment the next line if you need to build locally instead of pulling the prebuilt image
+    # build: .
+    container_name: ns-fischer
     volumes:
       # Mount snapshot directory to persist auction snapshots
       - ./snapshot:/app/snapshot

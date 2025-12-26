@@ -37,8 +37,8 @@ echo "Loading configuration from /app/config.json"
 
 # Create scheduler script that reads the single config file
 cat > /app/scheduler.js << 'SCHEDULER_EOF'
-const { spawn } = require('child_process');
-const fs = require('fs');
+import { spawn } from 'child_process';
+import fs from 'fs';
 
 // Parse cron expression
 function parseSchedule(cronExpr) {

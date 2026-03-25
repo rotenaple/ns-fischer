@@ -9,9 +9,11 @@
     "check_snapshot": false,
     "snapshot_path": "./snapshot/snapshot.json",
     "debug_mode": false,
-    "filter_holding_bids": false,
-    "holding_bid_threshold": 0.01,
-    "holding_bid_age_hours": 24
+    "filter_holding_items": true,
+    "holding_item_threshold_bid": 0.01,
+    "holding_item_threshold_ask": 9000,
+    "holding_item_multiplier": 10,
+    "holding_item_age_hours": 24
   },
   "minor": {
     "webhook_url": "https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN",
@@ -22,8 +24,10 @@
     "check_snapshot": true,
     "snapshot_path": "./snapshot/snapshot.json",
     "debug_mode": false,
-    "filter_holding_bids": false,
-    "holding_bid_threshold": 0.01,
-    "holding_bid_age_hours": 24
+    "filter_holding_items": true,
+    "holding_item_threshold_bid": 0.01,
+    "holding_item_threshold_ask": 9000,
+    "holding_item_multiplier": 10,
+    "holding_item_age_hours": 24
   }
 }

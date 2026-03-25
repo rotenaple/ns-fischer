@@ -62,9 +62,11 @@ Configurations are a top-level object where each key is a named configuration. E
     "check_snapshot": false,
     "snapshot_path": "./snapshot/snapshot.json",
     "debug_mode": false,
-    "filter_holding_bids": false,
-    "holding_bid_threshold": 0.01,
-    "holding_bid_age_hours": 24
+    "filter_holding_items": true,
+    "holding_item_threshold_bid": 0.01,
+    "holding_item_threshold_ask": 9000,
+    "holding_item_multiplier": 10,
+    "holding_item_age_hours": 24
   },
   "minor": {
     "webhook_url": "https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN",
@@ -75,9 +77,11 @@ Configurations are a top-level object where each key is a named configuration. E
     "check_snapshot": true,
     "snapshot_path": "./snapshot/snapshot.json",
     "debug_mode": false,
-    "filter_holding_bids": true,
-    "holding_bid_threshold": 0.01,
-    "holding_bid_age_hours": 24
+    "filter_holding_items": true,
+    "holding_item_threshold_bid": 0.01,
+    "holding_item_threshold_ask": 9000,
+    "holding_item_multiplier": 10,
+    "holding_item_age_hours": 24
   }
 }
 ```
@@ -95,9 +99,16 @@ Complete configuration fields
  - `check_snapshot` (boolean, optional, default: `false`): When `true`, only sends notifications when there are new auctions compared to the saved snapshot. When `false`, every run will post matches.
  - `snapshot_path` (string, optional, default: `./snapshot/auction_snapshot.json`): File path used to read/write snapshot state for change-detection.
 - `debug_mode` (boolean, optional, default: `false`): Enable verbose debug logging for troubleshooting.
-- `filter_holding_bids` (boolean, optional, default: `false`): When `true`, filters out "holding bids" - extremely low bids placed as reminders rather than active attempts to acquire cards. These bids clutter the auction view.
-- `holding_bid_threshold` (number, optional, default: `0.01`): Absolute threshold for holding bids. Any bid amount at or below this value is considered a holding bid.
-- `holding_bid_age_hours` (number, optional, default: `24`): Age threshold in hours. Any bid older than this many hours is considered a holding bid.
+- `filter_holding_items` (boolean, optional, default: `true`): When `true`, filters out "holding items" - extreme bids/asks placed as reminders rather than active attempts to trade. These items clutter the auction view.
+- `holding_item_threshold_bid` (number, optional, default: `0.01`): Maximum price for holding bids. Any bid at or below this value is considered a holding bid.
+- `holding_item_threshold_ask` (number, optional, default: `9000`): Minimum price for holding asks. Any ask at or above this value is considered a holding ask.
+- `holding_item_multiplier` (number, optional, default: `10`): Price multiplier relative to market value. Bids below or asks above this multiplier are considered holding items.
+- `holding_item_age_hours` (number, optional, default: `24`): Age threshold in hours. Any bid/ask older than this many hours is considered a holding item.
+
+**Holding Item Detection Logic:**
+A bid/ask is considered a holding item if:
+1. Price threshold is met (bid ≤ threshold_bid OR ask ≥ threshold_ask), AND
+2. Either price multiplier is met (bid ≤ market_value/multiplier OR ask ≥ market_value×multiplier) OR age threshold is met (age ≥ age_hours)
 
 Notes:
 - You may include multiple named configurations in `config.json`. The program accepts one or more config file paths on the command line and will process each configuration sequentially.

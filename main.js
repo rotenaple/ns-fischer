@@ -4,7 +4,7 @@ import process from "process";
 import { loadConfig, loadMultipleConfigs, parseConfig } from "./lib/config.js";
 import { fetchActiveNations } from "./lib/cte.js";
 import { writeSnapshot, checkSnapshot } from "./lib/snapshot.js";
-import { getCardInfo, getRarityIndex, sortAndLogCards, rarityColors } from "./lib/cards.js";
+import { getCardInfo, getRarityIndex, sortAndLogCards, rarityColors, isHoldingItem } from "./lib/cards.js";
 import { createDiscordMessage } from "./lib/discord.js";
 
 /**
@@ -77,9 +77,9 @@ async function processConfig(rawConfig) {
       const cards = actives.CARDS[type + "S"][type];
       if (Array.isArray(cards)) {
         cards.forEach((card) => {
-          // Handle both API response formats
+          // Handle both API response formats (BID_PRICE for bids, ASK_PRICE for asks, PRICE as fallback)
           const timestamp = parseInt(card.TIME_PLACED || card.TIMESTAMP) || 0;
-          const price = parseFloat(card.BID_PRICE || card.PRICE) || 0;
+          const price = parseFloat(card.BID_PRICE || card.ASK_PRICE || card.PRICE) || 0;
           toTrack.push({
             id: card.CARDID,
             season: card.SEASON,
@@ -92,7 +92,7 @@ async function processConfig(rawConfig) {
         });
       } else if (cards) {
         const timestamp = parseInt(cards.TIME_PLACED || cards.TIMESTAMP) || 0;
-        const price = parseFloat(cards.BID_PRICE || cards.PRICE) || 0;
+        const price = parseFloat(cards.BID_PRICE || cards.ASK_PRICE || cards.PRICE) || 0;
         toTrack.push({
           id: cards.CARDID,
           season: cards.SEASON,
@@ -121,51 +121,36 @@ async function processConfig(rawConfig) {
             const cardInfo = await getCardInfo(card, config.userAgent, activeNations, config.debugMode);
             if (!cardInfo) continue;
 
-            // Check if this is a holding bid and should be filtered
-            if (config.filterHoldingBids && card.type === 'bid') {
-              // Get the timestamp from market data for this specific nation's bid
-              let bidTimestamp = 0;
-              if (cardInfo.markets && Array.isArray(cardInfo.markets)) {
-                const marketBid = cardInfo.markets.find(m => 
-                  m.NATION && m.NATION.toLowerCase() === card.nation.toLowerCase() && 
-                  m.TYPE === 'bid'
-                );
-                if (marketBid && marketBid.TIMESTAMP) {
-                  bidTimestamp = parseInt(marketBid.TIMESTAMP);
-                }
-              }
-              
-              // Fallback to card timestamp if market timestamp not found
-              if (bidTimestamp === 0 && card.timestamp > 0) {
-                bidTimestamp = card.timestamp;
-              }
-              
-              const bidAgeHours = bidTimestamp > 0 ? (Date.now() / 1000 - bidTimestamp) / 3600 : 0;
-              const isHoldingBid = card.price <= config.holdingBidThreshold && bidAgeHours > config.holdingBidAgeHours;
+            // Unified holding item detection
+            if (config.filterHoldingItems) {
+              const holdingResult = isHoldingItem(card, cardInfo, config, card.type);
               
               if (config.debugMode) {
-                console.log(`Holding bid check: ${card.name} (price: ${card.price}, threshold: ${config.holdingBidThreshold}, age: ${bidAgeHours.toFixed(1)}h, ageThreshold: ${config.holdingBidAgeHours}h, isHolding: ${isHoldingBid}, timestamp: ${bidTimestamp})`);
+                console.log(`Holding ${card.type} check: ${card.name} (price: ${holdingResult.price}, marketValue: ${holdingResult.marketValue}, age: ${holdingResult.ageHours.toFixed(1)}h, reasons: ${holdingResult.reasons.join(', ')}, isHolding: ${holdingResult.isHoldingItem})`);
               }
               
-              if (isHoldingBid) {
+              if (holdingResult.isHoldingItem) {
                 if (config.debugMode) {
-                  console.log(`Filtered holding bid: ${card.name} (price: ${card.price}, age: ${bidAgeHours.toFixed(1)} hours)`);
+                  console.log(`Filtered holding ${card.type}: ${card.name} (price: ${holdingResult.price}, age: ${holdingResult.ageHours.toFixed(1)} hours, reasons: ${holdingResult.reasons.join(', ')})`);
                 }
-                // Add to filtered holding bids list for compact view
+                // Add to filtered holding items list for compact view
                 filteredHoldingBids.push({
                   name: card.name,
                   id: card.id,
                   season: card.season,
                   nation: card.nation,
                   price: card.price,
-                  ageHours: bidAgeHours,
+                  ageHours: holdingResult.ageHours,
                   rarity: cardInfo.rarity,
                   rarityColor: cardInfo.rarityColor,
                   marketValue: cardInfo.marketValue,
                   highestBid: cardInfo.highestBid,
-                  lowestAsk: cardInfo.lowestAsk
+                  lowestAsk: cardInfo.lowestAsk,
+                  endTime: cardInfo.endTime,
+                  type: card.type,
+                  reasons: holdingResult.reasons
                 });
-                continue; // Skip adding to regular bids list
+                continue; // Skip adding to regular list
               }
             }
 
@@ -186,7 +171,7 @@ async function processConfig(rawConfig) {
             }
           } else {
             // If the card already exists in the map, just add the nation to the list
-            cardMap.get(cardKey).nations.push(card.nation);
+            cardMap.get(cardKey).nations.push({ name: card.nation, price: card.price });
           }
         }
       }

@@ -61,7 +61,10 @@ Configurations are a top-level object where each key is a named configuration. E
     "no_ping": false,
     "check_snapshot": false,
     "snapshot_path": "./snapshot/snapshot.json",
-    "debug_mode": false
+    "debug_mode": false,
+    "filter_holding_bids": false,
+    "holding_bid_threshold": 0.01,
+    "holding_bid_age_hours": 24
   },
   "minor": {
     "webhook_url": "https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN",
@@ -71,7 +74,10 @@ Configurations are a top-level object where each key is a named configuration. E
     "no_ping": true,
     "check_snapshot": true,
     "snapshot_path": "./snapshot/snapshot.json",
-    "debug_mode": false
+    "debug_mode": false,
+    "filter_holding_bids": true,
+    "holding_bid_threshold": 0.01,
+    "holding_bid_age_hours": 24
   }
 }
 ```
@@ -89,6 +95,9 @@ Complete configuration fields
  - `check_snapshot` (boolean, optional, default: `false`): When `true`, only sends notifications when there are new auctions compared to the saved snapshot. When `false`, every run will post matches.
  - `snapshot_path` (string, optional, default: `./snapshot/auction_snapshot.json`): File path used to read/write snapshot state for change-detection.
 - `debug_mode` (boolean, optional, default: `false`): Enable verbose debug logging for troubleshooting.
+- `filter_holding_bids` (boolean, optional, default: `false`): When `true`, filters out "holding bids" - extremely low bids placed as reminders rather than active attempts to acquire cards. These bids clutter the auction view.
+- `holding_bid_threshold` (number, optional, default: `0.01`): Absolute threshold for holding bids. Any bid amount at or below this value is considered a holding bid.
+- `holding_bid_age_hours` (number, optional, default: `24`): Age threshold in hours. Any bid older than this many hours is considered a holding bid.
 
 Notes:
 - You may include multiple named configurations in `config.json`. The program accepts one or more config file paths on the command line and will process each configuration sequentially.

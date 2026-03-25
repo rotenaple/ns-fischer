@@ -26,6 +26,7 @@ async function processConfig(rawConfig) {
   let highestRarityIndex = -1;
   let highestRarityColor = rarityColors.common.color;
   let cardMap = new Map();
+  let filteredHoldingBids = [];
 
   // Fetch active nations list for CTE checking (doesn't use API quota)
   let activeNations;
@@ -75,22 +76,31 @@ async function processConfig(rawConfig) {
     ["ASK", "BID"].forEach((type) => {
       const cards = actives.CARDS[type + "S"][type];
       if (Array.isArray(cards)) {
-        cards.forEach((card) =>
+        cards.forEach((card) => {
+          // Handle both API response formats
+          const timestamp = parseInt(card.TIME_PLACED || card.TIMESTAMP) || 0;
+          const price = parseFloat(card.BID_PRICE || card.PRICE) || 0;
           toTrack.push({
             id: card.CARDID,
             season: card.SEASON,
             name: card.NAME,
             type: type.toLowerCase(),
             nation: nation,
-          })
-        );
+            price,
+            timestamp,
+          });
+        });
       } else if (cards) {
+        const timestamp = parseInt(cards.TIME_PLACED || cards.TIMESTAMP) || 0;
+        const price = parseFloat(cards.BID_PRICE || cards.PRICE) || 0;
         toTrack.push({
           id: cards.CARDID,
           season: cards.SEASON,
           name: cards.NAME,
           type: type.toLowerCase(),
           nation: nation,
+          price,
+          timestamp,
         });
       }
     });
@@ -110,6 +120,54 @@ async function processConfig(rawConfig) {
           if (!cardMap.has(cardKey)) {
             const cardInfo = await getCardInfo(card, config.userAgent, activeNations, config.debugMode);
             if (!cardInfo) continue;
+
+            // Check if this is a holding bid and should be filtered
+            if (config.filterHoldingBids && card.type === 'bid') {
+              // Get the timestamp from market data for this specific nation's bid
+              let bidTimestamp = 0;
+              if (cardInfo.markets && Array.isArray(cardInfo.markets)) {
+                const marketBid = cardInfo.markets.find(m => 
+                  m.NATION && m.NATION.toLowerCase() === card.nation.toLowerCase() && 
+                  m.TYPE === 'bid'
+                );
+                if (marketBid && marketBid.TIMESTAMP) {
+                  bidTimestamp = parseInt(marketBid.TIMESTAMP);
+                }
+              }
+              
+              // Fallback to card timestamp if market timestamp not found
+              if (bidTimestamp === 0 && card.timestamp > 0) {
+                bidTimestamp = card.timestamp;
+              }
+              
+              const bidAgeHours = bidTimestamp > 0 ? (Date.now() / 1000 - bidTimestamp) / 3600 : 0;
+              const isHoldingBid = card.price <= config.holdingBidThreshold && bidAgeHours > config.holdingBidAgeHours;
+              
+              if (config.debugMode) {
+                console.log(`Holding bid check: ${card.name} (price: ${card.price}, threshold: ${config.holdingBidThreshold}, age: ${bidAgeHours.toFixed(1)}h, ageThreshold: ${config.holdingBidAgeHours}h, isHolding: ${isHoldingBid}, timestamp: ${bidTimestamp})`);
+              }
+              
+              if (isHoldingBid) {
+                if (config.debugMode) {
+                  console.log(`Filtered holding bid: ${card.name} (price: ${card.price}, age: ${bidAgeHours.toFixed(1)} hours)`);
+                }
+                // Add to filtered holding bids list for compact view
+                filteredHoldingBids.push({
+                  name: card.name,
+                  id: card.id,
+                  season: card.season,
+                  nation: card.nation,
+                  price: card.price,
+                  ageHours: bidAgeHours,
+                  rarity: cardInfo.rarity,
+                  rarityColor: cardInfo.rarityColor,
+                  marketValue: cardInfo.marketValue,
+                  highestBid: cardInfo.highestBid,
+                  lowestAsk: cardInfo.lowestAsk
+                });
+                continue; // Skip adding to regular bids list
+              }
+            }
 
             cardMap.set(cardKey, cardInfo);
 
@@ -138,22 +196,26 @@ async function processConfig(rawConfig) {
   let { bidsList, asksList } = sortAndLogCards(cardMap, config.debugMode);
 
   let shouldSendMessage = true;
+  let newFilteredHoldingBids = filteredHoldingBids;
+  
   if (config.checkSnapshot === true) {
-    const { hasNewAuctions, allBids, allAsks } = checkSnapshot(
+    const { hasNewAuctions, allBids, allAsks, newFilteredHoldingBids: newHoldingBids } = checkSnapshot(
       config.snapshotPath,
       bidsList,
-      asksList
+      asksList,
+      filteredHoldingBids
     );
     bidsList = allBids;
     asksList = allAsks;
-    shouldSendMessage = hasNewAuctions;
+    newFilteredHoldingBids = newHoldingBids;
+    shouldSendMessage = hasNewAuctions || newHoldingBids.length > 0;
     if (config.debugMode)
       console.log(
-        `Has new auctions: ${hasNewAuctions}, Total bids: ${bidsList.length}, Total asks: ${asksList.length}`
+        `Has new auctions: ${hasNewAuctions}, Total bids: ${bidsList.length}, Total asks: ${asksList.length}, New holding bids: ${newHoldingBids.length}`
       );
   }
 
-  writeSnapshot(config.snapshotPath, bidsList, asksList);
+  writeSnapshot(config.snapshotPath, bidsList, asksList, filteredHoldingBids);
   if (config.debugMode) console.log(`Snapshot written to ${config.snapshotPath}`);
 
   const allEntries = [
@@ -161,8 +223,9 @@ async function processConfig(rawConfig) {
     { title: "Asks", list: asksList },
   ];
 
+  // Send message if there are new auctions OR new filtered holding bids
   if (shouldSendMessage) {
-    await createDiscordMessage(hook, allEntries, highestRarityColor, config.mention, config.noPing);
+    await createDiscordMessage(hook, allEntries, newFilteredHoldingBids, highestRarityColor, config.mention, config.noPing);
   } else {
     console.log("No new auctions found. No messages sent to Discord.");
   }

@@ -71,39 +71,58 @@ async function processConfig(rawConfig) {
       continue;
     }
 
-    // Extract the cards to track
+    // Extract the cards to track (only best bid/ask per card)
     const toTrack = [];
+    const bestBidPerCard = {}; // Track highest bid per card for this nation
+    const bestAskPerCard = {}; // Track lowest ask per card for this nation
+    
     ["ASK", "BID"].forEach((type) => {
       const cards = actives.CARDS[type + "S"][type];
+      const isBid = type === "BID";
+      const bestMap = isBid ? bestBidPerCard : bestAskPerCard;
+      
       if (Array.isArray(cards)) {
         cards.forEach((card) => {
-          // Handle both API response formats (BID_PRICE for bids, ASK_PRICE for asks, PRICE as fallback)
           const timestamp = parseInt(card.TIME_PLACED || card.TIMESTAMP) || 0;
           const price = parseFloat(card.BID_PRICE || card.ASK_PRICE || card.PRICE) || 0;
-          toTrack.push({
-            id: card.CARDID,
-            season: card.SEASON,
-            name: card.NAME,
-            type: type.toLowerCase(),
-            nation: nation,
-            price,
-            timestamp,
-          });
+          const cardKey = `${card.CARDID}-${card.SEASON}`;
+          
+          // For bids: keep highest price, for asks: keep lowest price
+          if (!bestMap[cardKey] || 
+              (isBid ? price > bestMap[cardKey].price : price < bestMap[cardKey].price)) {
+            bestMap[cardKey] = {
+              id: card.CARDID,
+              season: card.SEASON,
+              name: card.NAME,
+              type: type.toLowerCase(),
+              nation: nation,
+              price,
+              timestamp,
+            };
+          }
         });
       } else if (cards) {
         const timestamp = parseInt(cards.TIME_PLACED || cards.TIMESTAMP) || 0;
         const price = parseFloat(cards.BID_PRICE || cards.ASK_PRICE || cards.PRICE) || 0;
-        toTrack.push({
-          id: cards.CARDID,
-          season: cards.SEASON,
-          name: cards.NAME,
-          type: type.toLowerCase(),
-          nation: nation,
-          price,
-          timestamp,
-        });
+        const cardKey = `${cards.CARDID}-${cards.SEASON}`;
+        
+        if (!bestMap[cardKey] || 
+            (isBid ? price > bestMap[cardKey].price : price < bestMap[cardKey].price)) {
+          bestMap[cardKey] = {
+            id: cards.CARDID,
+            season: cards.SEASON,
+            name: cards.NAME,
+            type: type.toLowerCase(),
+            nation: nation,
+            price,
+            timestamp,
+          };
+        }
       }
     });
+    
+    // Add best bids and asks to tracking list
+    toTrack.push(...Object.values(bestBidPerCard), ...Object.values(bestAskPerCard));
 
     if (config.debugMode)
       console.log(`Tracking ${toTrack.length} cards for ${nation}.`);
@@ -184,7 +203,7 @@ async function processConfig(rawConfig) {
   let newFilteredHoldingBids = filteredHoldingBids;
   
   if (config.checkSnapshot === true) {
-    const { hasNewAuctions, allBids, allAsks, newFilteredHoldingBids: newHoldingBids } = checkSnapshot(
+    const { hasChanges, allBids, allAsks, newFilteredHoldingBids: newHoldingBids } = checkSnapshot(
       config.snapshotPath,
       bidsList,
       asksList,
@@ -193,10 +212,10 @@ async function processConfig(rawConfig) {
     bidsList = allBids;
     asksList = allAsks;
     newFilteredHoldingBids = newHoldingBids;
-    shouldSendMessage = hasNewAuctions || newHoldingBids.length > 0;
+    shouldSendMessage = hasChanges;
     if (config.debugMode)
       console.log(
-        `Has new auctions: ${hasNewAuctions}, Total bids: ${bidsList.length}, Total asks: ${asksList.length}, New holding bids: ${newHoldingBids.length}`
+        `Has changes: ${hasChanges}, Total bids: ${bidsList.length}, Total asks: ${asksList.length}, New holding bids: ${newHoldingBids.length}`
       );
   }
 
